@@ -11,13 +11,24 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadNote = async () => {
       try {
+        console.log('Loading note...');
         const note = await getNote();
         if (note && editorRef.current) {
+          console.log('Note found, loading content:', note.content.substring(0, 50));
           editorRef.current.innerHTML = note.content;
           setLastSaved(new Date(note.updatedAt));
+        } else {
+          console.log('No note found, starting with empty editor');
+          if (editorRef.current) {
+            editorRef.current.innerHTML = '';
+          }
         }
       } catch (error) {
         console.error('Error loading note:', error);
+        // Even if there's an error, show the editor
+        if (editorRef.current) {
+          editorRef.current.innerHTML = '';
+        }
       } finally {
         setIsLoading(false);
       }
@@ -30,13 +41,14 @@ const App: React.FC = () => {
   const saveContent = async () => {
     try {
       const content = editorRef.current?.innerHTML || '';
-      if (content.trim() || content.includes('<')) {
-        await saveNote(content);
-        setLastSaved(new Date());
-        console.log('Conteúdo salvo:', content.substring(0, 50));
-      }
+      // Save even if empty (to clear the field)
+      console.log('Saving content, length:', content.length);
+      await saveNote(content);
+      setLastSaved(new Date());
+      console.log('✅ Conteúdo salvo com sucesso');
     } catch (error) {
-      console.error('Error saving note:', error);
+      console.error('❌ Error saving note:', error);
+      // Show error to user somehow? Or just log it
     }
   };
 
