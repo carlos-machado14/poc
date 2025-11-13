@@ -16,12 +16,26 @@ root.render(
 // Register service worker for offline functionality
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
+    // Use process.env.PUBLIC_URL if available, otherwise use root
+    const swPath = `${process.env.PUBLIC_URL || ''}/service-worker.js`;
+    navigator.serviceWorker.register(swPath, { scope: '/' })
       .then((registration) => {
         console.log('Service Worker registered successfully:', registration.scope);
+        
+        // Check for updates periodically
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('New service worker available. Refresh to update.');
+              }
+            });
+          }
+        });
       })
       .catch((error) => {
-        console.log('Service Worker registration failed:', error);
+        console.error('Service Worker registration failed:', error);
       });
   });
 }

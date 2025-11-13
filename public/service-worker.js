@@ -39,6 +39,17 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Skip non-GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Skip cross-origin requests
+  const url = new URL(event.request.url);
+  if (url.origin !== location.origin) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -68,7 +79,7 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => {
           // If fetch fails, try to serve a fallback
           if (event.request.destination === 'document') {
-            return caches.match('/');
+            return caches.match('/index.html').catch(() => caches.match('/'));
           }
         });
       })
