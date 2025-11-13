@@ -65,48 +65,26 @@ const openDB = (): Promise<IDBDatabase> => {
 };
 // Get or create the note
 const getNote = async (): Promise<Note | null> => {
-  // First, try localStorage (more reliable in production)
-  if (isLocalStorageAvailable()) {
-    try {
-      const backup = localStorage.getItem('noteApp_backup');
-      if (backup) {
-        console.log('Note loaded from localStorage');
-        return {
-          id: 1,
-          content: backup,
-          updatedAt: parseInt(localStorage.getItem('noteApp_backup_time') || '0', 10)
-        };
-      }
-    } catch (e) {
-      console.warn('Error reading from localStorage:', e);
-    }
-  }
+  let indexedDBNote: Note | null = null;
+  let localStorageNote: Note | null = null;
 
-  // Then try IndexedDB
+  // Try IndexedDB first (since we're saving there)
   if (isIndexedDBAvailable()) {
     try {
-      console.log('Attempting to load from IndexedDB...');
       const db = await openDB();
       const transaction = db.transaction(STORE_NAME, 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.get(1);
       
-      const note = await new Promise<Note | null>((resolve) => {
+      indexedDBNote = await new Promise<Note | null>((resolve) => {
         const timeout = setTimeout(() => {
-          console.warn('IndexedDB request timeout');
           resolve(null);
         }, 5000); // 5 second timeout
 
         request.onsuccess = () => {
           clearTimeout(timeout);
           const result = request.result;
-          if (result) {
-            console.log('✅ Note loaded from IndexedDB:', result);
-            resolve(result);
-          } else {
-            console.log('No note found in IndexedDB');
-            resolve(null);
-          }
+          resolve(result || null);
         };
         
         request.onerror = (event) => {
@@ -118,16 +96,41 @@ const getNote = async (): Promise<Note | null> => {
       });
       
       db.close();
-      
-      if (note) {
-        return note;
-      }
     } catch (error) {
       console.warn('❌ Error loading from IndexedDB:', error);
     }
   }
 
-  // Return null if nothing found
+  // Also try localStorage as backup
+  if (isLocalStorageAvailable()) {
+    try {
+      const backup = localStorage.getItem('noteApp_backup');
+      if (backup) {
+        localStorageNote = {
+          id: 1,
+          content: backup,
+          updatedAt: parseInt(localStorage.getItem('noteApp_backup_time') || '0', 10)
+        };
+      }
+    } catch (e) {
+      console.warn('Error reading from localStorage:', e);
+    }
+  }
+
+  // Return the most recent note, or IndexedDB if both exist
+  if (indexedDBNote && localStorageNote) {
+    // If both exist, prefer IndexedDB (it's more recent or primary)
+    return indexedDBNote;
+  }
+  
+  if (indexedDBNote) {
+    return indexedDBNote;
+  }
+  
+  if (localStorageNote) {
+    return localStorageNote;
+  }
+
   return null;
 };
 
@@ -141,7 +144,6 @@ const saveNote = async (content: string): Promise<Note> => {
     try {
       localStorage.setItem('noteApp_backup', content);
       localStorage.setItem('noteApp_backup_time', now.toString());
-      console.log('Note saved to localStorage');
     } catch (e) {
       console.error('Could not save to localStorage:', e);
     }
@@ -150,10 +152,7 @@ const saveNote = async (content: string): Promise<Note> => {
   // Then try to save to IndexedDB (optional, localStorage is primary)
   if (isIndexedDBAvailable()) {
     try {
-      console.log('Attempting to save to IndexedDB...');
       const db = await openDB();
-      console.log('IndexedDB opened successfully');
-      
       const transaction = db.transaction(STORE_NAME, 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       
@@ -165,12 +164,11 @@ const saveNote = async (content: string): Promise<Note> => {
         const timeout = setTimeout(() => {
           if (!resolved) {
             resolved = true;
-            console.warn('⚠️ IndexedDB save timeout after 5s, but saved to localStorage');
             resolve();
           }
         }, 5000); // 5 second timeout
 
-        // Log transaction events
+        // Log transaction events only on error
         transaction.onerror = (event) => {
           const error = (event.target as IDBTransaction).error;
           console.error('❌ IndexedDB transaction error:', error);
@@ -182,7 +180,6 @@ const saveNote = async (content: string): Promise<Note> => {
         };
         
         transaction.oncomplete = () => {
-          console.log('✅ IndexedDB transaction completed');
           if (!resolved) {
             resolved = true;
             clearTimeout(timeout);
@@ -191,7 +188,6 @@ const saveNote = async (content: string): Promise<Note> => {
         };
         
         transaction.onabort = () => {
-          console.warn('⚠️ IndexedDB transaction aborted');
           if (!resolved) {
             resolved = true;
             clearTimeout(timeout);
@@ -200,7 +196,6 @@ const saveNote = async (content: string): Promise<Note> => {
         };
 
         putRequest.onsuccess = () => {
-          console.log('✅ Note put request successful, waiting for transaction...');
           // Transaction will complete automatically, oncomplete will resolve
         };
         
@@ -210,21 +205,16 @@ const saveNote = async (content: string): Promise<Note> => {
             clearTimeout(timeout);
             const error = (event.target as IDBRequest).error;
             console.error('❌ IndexedDB put error:', error);
-            console.warn('⚠️ Saved to localStorage instead');
             resolve(); // Don't reject, we have localStorage
           }
         };
       });
       
       db.close();
-      console.log('IndexedDB connection closed');
     } catch (error) {
       console.error('❌ Error saving to IndexedDB:', error);
-      console.warn('⚠️ Saved to localStorage instead');
       // Continue anyway, localStorage is saved
     }
-  } else {
-    console.warn('IndexedDB not available, using localStorage only');
   }
 
   return note;
@@ -247,6 +237,29 @@ const verifyIndexedDB = async (): Promise<boolean> => {
       countRequest.onsuccess = () => resolve(countRequest.result);
       countRequest.onerror = () => reject(countRequest.error);
     });
+    
+    // Also try to get the actual note to see what's stored
+    if (count > 0) {
+      const getRequest = store.get(1);
+      await new Promise<void>((resolve) => {
+        getRequest.onsuccess = () => {
+          const note = getRequest.result;
+          if (note) {
+            console.log('IndexedDB note details:', {
+              id: note.id,
+              contentLength: note.content?.length || 0,
+              contentPreview: note.content?.substring(0, 50) || '',
+              updatedAt: new Date(note.updatedAt).toLocaleString()
+            });
+          }
+          resolve();
+        };
+        getRequest.onerror = () => {
+          console.warn('Could not retrieve note details');
+          resolve();
+        };
+      });
+    }
     
     db.close();
     console.log(`IndexedDB verification: ${count} note(s) found`);

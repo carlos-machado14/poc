@@ -6,79 +6,166 @@ const App: React.FC = () => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const isLoadingRef = useRef<boolean>(false); // Flag to prevent save during load
+  const lastSavedContentRef = useRef<string>(''); // Track last saved content to avoid unnecessary saves
+  const isSavingRef = useRef<boolean>(false); // Flag to prevent concurrent saves
 
-  // Load note on mount
+  // Cleanup timeout on unmount
   useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  // Load note on mount - only run once
+  useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates after unmount
+    
     const loadNote = async () => {
       try {
+        isLoadingRef.current = true; // Prevent saves during loading
         console.log('=== Loading note ===');
-        // Verify IndexedDB first
-        await verifyIndexedDB();
         
+        // Don't verify IndexedDB on load - it can cause issues
+        // Just load the note directly
         const note = await getNote();
+        console.log('Note result:', note ? 'Found' : 'Not found');
+        
+        if (!isMounted) return; // Component unmounted, don't continue
+        
+        // Wait a bit to ensure editor is ready
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (!isMounted) return; // Check again after delay
+        
         if (note && editorRef.current) {
-          console.log('✅ Note found, loading content:', note.content.substring(0, 50));
-          editorRef.current.innerHTML = note.content;
+          const content = note.content || '';
+          console.log('✅ Note found, loading content. Length:', content.length);
+          
+          // Set content while loading flag is active (prevents save trigger)
+          editorRef.current.innerHTML = content;
+          
+          if (!isMounted) return;
+          
           setLastSaved(new Date(note.updatedAt));
+          lastSavedContentRef.current = content; // Set initial saved content
+          
+          // Allow saves after a short delay to ensure content is set
+          setTimeout(() => {
+            if (isMounted) {
+              isLoadingRef.current = false;
+              console.log('✅ Loading complete, saves enabled');
+            }
+          }, 500);
         } else {
           console.log('ℹ️ No note found, starting with empty editor');
-          if (editorRef.current) {
+          if (editorRef.current && isMounted) {
             editorRef.current.innerHTML = '';
           }
+          isLoadingRef.current = false; // Allow saves
         }
       } catch (error) {
         console.error('❌ Error loading note:', error);
         // Even if there's an error, show the editor
-        if (editorRef.current) {
+        if (editorRef.current && isMounted) {
           editorRef.current.innerHTML = '';
         }
+        isLoadingRef.current = false; // Allow saves even on error
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
+    
     loadNote();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const saveContent = async () => {
+    // Don't save if we're still loading
+    if (isLoadingRef.current) {
+      console.log('Skipping save - still loading');
+      return;
+    }
+    
+    // Don't save if already saving
+    if (isSavingRef.current) {
+      console.log('Skipping save - already saving');
+      return;
+    }
+    
     try {
       const content = editorRef.current?.innerHTML || '';
-      // Save even if empty (to clear the field)
-      console.log('=== Saving content ===');
-      console.log('Content length:', content.length);
-      await saveNote(content);
-      setLastSaved(new Date());
-      console.log('✅ Conteúdo salvo com sucesso');
       
-      // Verify it was saved
-      setTimeout(async () => {
-        await verifyIndexedDB();
-      }, 500);
+      // Don't save if content hasn't changed
+      if (content === lastSavedContentRef.current) {
+        console.log('Skipping save - content unchanged');
+        return;
+      }
+      
+      // Mark as saving
+      isSavingRef.current = true;
+      
+      // Save even if empty (to clear the field)
+      await saveNote(content);
+      lastSavedContentRef.current = content; // Update last saved content
+      setLastSaved(new Date());
+      
+      // Don't verify immediately to avoid performance issues
+      // Verification can be done manually if needed
     } catch (error) {
       console.error('❌ Error saving note:', error);
       // Show error to user somehow? Or just log it
+    } finally {
+      // Always clear the saving flag
+      isSavingRef.current = false;
     }
   };
 
   const handleInput = () => {
+    // Don't save if we're still loading
+    if (isLoadingRef.current) {
+      return;
+    }
+    
+    // Don't save if already saving
+    if (isSavingRef.current) {
+      return;
+    }
+    
     // Clear existing timeout
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
     }
 
     // Set new timeout for auto-save
     saveTimeoutRef.current = setTimeout(() => {
       saveContent();
-    }, 1000); // Save after 1 second of inactivity
+      saveTimeoutRef.current = null;
+    }, 2000); // Increased to 2 seconds to reduce frequency
   };
 
   // Save on blur (when user clicks outside)
   const handleBlur = () => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
     }
-    saveContent();
+    // Only save if not already saving
+    if (!isSavingRef.current && !isLoadingRef.current) {
+      saveContent();
+    }
   };
 
   // Save before page unload (refresh, close tab, etc)
@@ -103,8 +190,12 @@ const App: React.FC = () => {
         // Page is being hidden, save immediately
         if (saveTimeoutRef.current) {
           clearTimeout(saveTimeoutRef.current);
+          saveTimeoutRef.current = null;
         }
-        saveContent();
+        // Only save if not already saving and not loading
+        if (!isSavingRef.current && !isLoadingRef.current) {
+          saveContent();
+        }
       }
     };
 

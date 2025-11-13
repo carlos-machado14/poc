@@ -7,10 +7,20 @@ import reportWebVitals from './reportWebVitals';
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
+// Prevent unhandled errors from causing page reloads
+window.addEventListener('error', (event) => {
+  console.error('Global error caught:', event.error);
+  event.preventDefault(); // Prevent default error handling
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+  event.preventDefault(); // Prevent default error handling
+});
+
+// Temporarily disable StrictMode to prevent double-rendering issues
 root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
+  <App />
 );
 
 // Register service worker for offline functionality
@@ -22,13 +32,19 @@ if ('serviceWorker' in navigator) {
       .then((registration) => {
         console.log('Service Worker registered successfully:', registration.scope);
         
-        // Check for updates periodically
+        // Check for updates periodically - but don't auto-reload
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                console.log('New service worker available. Refresh to update.');
+              if (newWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  // New service worker available, but don't auto-reload
+                  console.log('New service worker available. Will activate on next page load.');
+                } else {
+                  // First time installation
+                  console.log('Service worker installed for the first time.');
+                }
               }
             });
           }
