@@ -44,9 +44,18 @@ const App: React.FC = () => {
         if (note && editorRef.current) {
           const content = note.content || '';
           console.log('✅ Note found, loading content. Length:', content.length);
+          console.log('📝 Content preview (first 100 chars):', content.substring(0, 100));
           
           // Set content while loading flag is active (prevents save trigger)
           editorRef.current.innerHTML = content;
+          
+          // Verify content was set
+          const actualContent = editorRef.current.innerHTML;
+          console.log('🔍 Content verification:', {
+            expectedLength: content.length,
+            actualLength: actualContent.length,
+            matches: actualContent === content || actualContent.includes(content.substring(0, 50))
+          });
           
           if (!isMounted) return;
           

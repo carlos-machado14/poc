@@ -68,7 +68,35 @@ const getNote = async (): Promise<Note | null> => {
   let indexedDBNote: Note | null = null;
   let localStorageNote: Note | null = null;
 
-  // Try IndexedDB first (since we're saving there)
+  // Try localStorage FIRST (more reliable in production/Vercel)
+  if (isLocalStorageAvailable()) {
+    try {
+      const backup = localStorage.getItem('noteApp_backup');
+      const backupTime = localStorage.getItem('noteApp_backup_time');
+      console.log('🔍 Checking localStorage:', { 
+        hasBackup: !!backup, 
+        backupLength: backup?.length || 0,
+        backupTime: backupTime 
+      });
+      
+      if (backup) {
+        localStorageNote = {
+          id: 1,
+          content: backup,
+          updatedAt: parseInt(backupTime || '0', 10)
+        };
+        console.log('✅ Found note in localStorage, length:', backup.length);
+      } else {
+        console.log('ℹ️ No note found in localStorage');
+      }
+    } catch (e) {
+      console.warn('❌ Error reading from localStorage:', e);
+    }
+  } else {
+    console.warn('⚠️ localStorage not available');
+  }
+
+  // Also try IndexedDB as secondary source
   if (isIndexedDBAvailable()) {
     try {
       const db = await openDB();
@@ -78,12 +106,18 @@ const getNote = async (): Promise<Note | null> => {
       
       indexedDBNote = await new Promise<Note | null>((resolve) => {
         const timeout = setTimeout(() => {
+          console.warn('⏱️ IndexedDB request timeout');
           resolve(null);
         }, 5000); // 5 second timeout
 
         request.onsuccess = () => {
           clearTimeout(timeout);
           const result = request.result;
+          if (result) {
+            console.log('✅ Found note in IndexedDB, length:', result.content?.length || 0);
+          } else {
+            console.log('ℹ️ No note found in IndexedDB');
+          }
           resolve(result || null);
         };
         
@@ -99,38 +133,22 @@ const getNote = async (): Promise<Note | null> => {
     } catch (error) {
       console.warn('❌ Error loading from IndexedDB:', error);
     }
+  } else {
+    console.warn('⚠️ IndexedDB not available');
   }
 
-  // Also try localStorage as backup
-  if (isLocalStorageAvailable()) {
-    try {
-      const backup = localStorage.getItem('noteApp_backup');
-      if (backup) {
-        localStorageNote = {
-          id: 1,
-          content: backup,
-          updatedAt: parseInt(localStorage.getItem('noteApp_backup_time') || '0', 10)
-        };
-      }
-    } catch (e) {
-      console.warn('Error reading from localStorage:', e);
-    }
-  }
-
-  // Return the most recent note, or IndexedDB if both exist
-  if (indexedDBNote && localStorageNote) {
-    // If both exist, prefer IndexedDB (it's more recent or primary)
-    return indexedDBNote;
+  // Return localStorage if available (most reliable), otherwise IndexedDB
+  if (localStorageNote) {
+    console.log('📦 Returning note from localStorage');
+    return localStorageNote;
   }
   
   if (indexedDBNote) {
+    console.log('📦 Returning note from IndexedDB');
     return indexedDBNote;
   }
-  
-  if (localStorageNote) {
-    return localStorageNote;
-  }
 
+  console.log('❌ No note found in any storage');
   return null;
 };
 
@@ -144,9 +162,23 @@ const saveNote = async (content: string): Promise<Note> => {
     try {
       localStorage.setItem('noteApp_backup', content);
       localStorage.setItem('noteApp_backup_time', now.toString());
+      console.log('💾 Saved to localStorage:', {
+        contentLength: content.length,
+        timestamp: new Date(now).toLocaleString()
+      });
+      
+      // Verify it was saved
+      const verify = localStorage.getItem('noteApp_backup');
+      if (verify === content) {
+        console.log('✅ localStorage save verified successfully');
+      } else {
+        console.warn('⚠️ localStorage save verification failed');
+      }
     } catch (e) {
-      console.error('Could not save to localStorage:', e);
+      console.error('❌ Could not save to localStorage:', e);
     }
+  } else {
+    console.warn('⚠️ localStorage not available for saving');
   }
 
   // Then try to save to IndexedDB (optional, localStorage is primary)
