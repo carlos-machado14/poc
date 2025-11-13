@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getNote, saveNote } from './db';
+import { getNote, saveNote, verifyIndexedDB } from './db';
 import './App.css';
 
 const App: React.FC = () => {
@@ -11,20 +11,23 @@ const App: React.FC = () => {
   useEffect(() => {
     const loadNote = async () => {
       try {
-        console.log('Loading note...');
+        console.log('=== Loading note ===');
+        // Verify IndexedDB first
+        await verifyIndexedDB();
+        
         const note = await getNote();
         if (note && editorRef.current) {
-          console.log('Note found, loading content:', note.content.substring(0, 50));
+          console.log('✅ Note found, loading content:', note.content.substring(0, 50));
           editorRef.current.innerHTML = note.content;
           setLastSaved(new Date(note.updatedAt));
         } else {
-          console.log('No note found, starting with empty editor');
+          console.log('ℹ️ No note found, starting with empty editor');
           if (editorRef.current) {
             editorRef.current.innerHTML = '';
           }
         }
       } catch (error) {
-        console.error('Error loading note:', error);
+        console.error('❌ Error loading note:', error);
         // Even if there's an error, show the editor
         if (editorRef.current) {
           editorRef.current.innerHTML = '';
@@ -42,10 +45,16 @@ const App: React.FC = () => {
     try {
       const content = editorRef.current?.innerHTML || '';
       // Save even if empty (to clear the field)
-      console.log('Saving content, length:', content.length);
+      console.log('=== Saving content ===');
+      console.log('Content length:', content.length);
       await saveNote(content);
       setLastSaved(new Date());
       console.log('✅ Conteúdo salvo com sucesso');
+      
+      // Verify it was saved
+      setTimeout(async () => {
+        await verifyIndexedDB();
+      }, 500);
     } catch (error) {
       console.error('❌ Error saving note:', error);
       // Show error to user somehow? Or just log it
