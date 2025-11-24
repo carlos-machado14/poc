@@ -3,7 +3,7 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f5f5f5;
+  background-color: #f4f4f4;
 }
 
 .app-header {
@@ -13,6 +13,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  z-index: 10;
 }
 
 .app-header h1 {
@@ -21,10 +22,41 @@
   color: #333;
 }
 
+.back-button {
+  padding: 0.5rem 1rem;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #666;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: #e0e0e0;
+  border-color: #bbb;
+}
+
 .save-indicator {
   font-size: 0.875rem;
   color: #666;
   font-style: italic;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.editor-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  overflow: hidden;
+  height: 100%;
 }
 
 .toolbar {
@@ -34,6 +66,14 @@
   display: flex;
   gap: 0.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+  overflow-x: auto;
+}
+
+.toolbar-divider {
+  width: 1px;
+  background-color: #e0e0e0;
+  margin: 0 0.25rem;
 }
 
 .toolbar-btn {
@@ -48,6 +88,30 @@
   align-items: center;
   justify-content: center;
   min-width: 40px;
+  white-space: nowrap;
+}
+
+.toolbar-select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #ddd;
+  background-color: #ffffff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  min-width: 120px;
+  font-family: inherit;
+}
+
+.toolbar-select:hover {
+  background-color: #f0f0f0;
+  border-color: #bbb;
+}
+
+.toolbar-select:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
 }
 
 .toolbar-btn:hover {
@@ -59,6 +123,12 @@
   background-color: #e0e0e0;
 }
 
+.toolbar-btn.is-active {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  color: #1976d2;
+}
+
 .toolbar-btn strong {
   font-weight: bold;
 }
@@ -67,48 +137,226 @@
   text-decoration: underline;
 }
 
-.toolbar-icon {
-  font-size: 1.2rem;
-  line-height: 1;
+.toolbar-btn em {
+  font-style: italic;
 }
 
+.toolbar-btn s {
+  text-decoration: line-through;
+}
+
+/* Estilos do TipTap Editor */
 .editor-content {
   flex: 1;
-  padding: 1.5rem;
-  border: none;
-  outline: none;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  padding: 30px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: Arial, sans-serif;
   font-size: 16px;
   line-height: 1.6;
   color: #333;
   background-color: #ffffff;
-  overflow-y: auto;
-  min-height: 0;
+  max-height: calc(100vh - 200px);
+  height: 100%;
 }
 
-.editor-content:empty:before {
-  content: attr(data-placeholder);
-  color: #999;
-  font-style: italic;
-}
-
-.editor-content:focus {
+.editor-content .ProseMirror {
   outline: none;
+  min-height: 100%;
 }
 
-/* Estilos para o conteúdo editável */
-.editor-content p {
+.editor-content .ProseMirror p {
   margin: 0.5rem 0;
 }
 
-.editor-content p:first-child {
+.editor-content .ProseMirror p:first-child {
   margin-top: 0;
 }
 
-.editor-content p:last-child {
+.editor-content .ProseMirror p:last-child {
   margin-bottom: 0;
+}
+
+.editor-content .ProseMirror h1,
+.editor-content .ProseMirror h2,
+.editor-content .ProseMirror h3,
+.editor-content .ProseMirror h4,
+.editor-content .ProseMirror h5,
+.editor-content .ProseMirror h6 {
+  margin: 1.5rem 0 0.5rem 0;
+  font-weight: bold;
+}
+
+.editor-content .ProseMirror h1 {
+  font-size: 2em;
+}
+
+.editor-content .ProseMirror h2 {
+  font-size: 1.5em;
+}
+
+.editor-content .ProseMirror h3 {
+  font-size: 1.17em;
+}
+
+.editor-content .ProseMirror ul,
+.editor-content .ProseMirror ol {
+  margin: 0.5rem 0;
+  padding-left: 2rem;
+}
+
+.editor-content .ProseMirror li {
+  margin: 0.25rem 0;
+}
+
+.editor-content .ProseMirror a {
+  color: #1976d2;
+  text-decoration: underline;
+}
+
+.editor-content .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 1rem 0;
+  display: block;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s;
+}
+
+.editor-content .ProseMirror img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ------- ESTILOS APLICÁVEIS (BLOCO) ------- */
+.editor-content .ProseMirror p.bloco-verde,
+.editor-content .ProseMirror p.bloco-azul,
+.editor-content .ProseMirror p.bloco-neutro {
+  position: relative;
+}
+
+.editor-content .ProseMirror p.bloco-verde {
+  border: 2px dashed #00A86B;
+  background: #fff;
+  padding: 16px;
+  border-radius: 6px;
+  margin: 18px 0;
+}
+
+.editor-content .ProseMirror p.bloco-azul {
+  border: 2px dashed #00A86B;
+  background: #EAF5FF;
+  padding: 16px;
+  border-radius: 6px;
+  margin: 18px 0;
+}
+
+.editor-content .ProseMirror p.bloco-neutro {
+  background: #F4F4F4;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 18px 0;
+}
+
+/* ------- ESTILOS APLICÁVEIS (INLINE) ------- */
+.editor-content .ProseMirror .texto-amarelo,
+.editor-content .ProseMirror .texto-verde,
+.editor-content .ProseMirror .negrito {
+  position: relative;
+  display: inline-block;
+}
+
+.editor-content .ProseMirror .texto-amarelo {
+  background: #FFF36A;
+  font-weight: 700;
+  padding: 2px 3px;
+  border-radius: 2px;
+}
+
+.editor-content .ProseMirror .texto-verde {
+  background: #C8F7C5;
+  font-weight: 700;
+  padding: 2px 3px;
+  border-radius: 2px;
+}
+
+.editor-content .ProseMirror .negrito {
+  font-weight: 700;
+}
+
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: #fafafa;
+  border-left: 1px solid #ddd;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.sidebar h3 {
+  margin-top: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.style-button {
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  border-radius: 6px;
+  background: #fff;
+  transition: all 0.2s;
+}
+
+.style-button:hover {
+  background: #eee;
+}
+
+.style-button.is-active {
+  background: #e3f2fd;
+  border-color: #2196f3;
+}
+
+/* Representação visual nos botões da sidebar */
+.btn-preview-bloco-verde {
+  border: 2px dashed #00A86B;
+  padding: 6px;
+  background: #fff;
+}
+
+.btn-preview-bloco-azul {
+  border: 2px dashed #00A86B;
+  padding: 6px;
+  background: #EAF5FF;
+}
+
+.btn-preview-bloco-neutro {
+  padding: 6px;
+  background: #F4F4F4;
+}
+
+.btn-preview-texto-amarelo {
+  background: #FFF36A;
+  font-weight: 700;
+  padding: 2px 3px;
+}
+
+.btn-preview-texto-verde {
+  background: #C8F7C5;
+  font-weight: 700;
+  padding: 2px 3px;
+}
+
+.btn-preview-negrito {
+  font-weight: 700;
 }
 
 /* Responsive design */
@@ -118,6 +366,17 @@
     align-items: flex-start;
     gap: 0.5rem;
     padding: 1rem;
+  }
+
+  .main-content {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #ddd;
+    max-height: 200px;
   }
 
   .toolbar {
@@ -134,4 +393,76 @@
     padding: 1rem;
     font-size: 14px;
   }
+  /* Estilos Block */
+.editor-content p.bloco-questao {
+  border: 1px dotted #4caf50; /* Borda verde */
+  background-color: #e8f5e9; /* Fundo verde claro */
+  padding: 10px;
+}
+.editor-content p.bloco-jurisprudencia {
+  border: 1px dotted #2196f3; /* Borda azul */
+  background-color: #e3f2fd; /* Fundo azul claro */
+  padding: 10px;
+}
+
+/* Estilos Inline (Marks) */
+.editor-content .texto-novo {
+  color: #0000ff; /* Cor azul para inclusão */
+}
+.editor-content .sublinhado-vermelho {
+  text-decoration: underline;
+  text-decoration-color: red; /* Cor do sublinhado */
+  text-decoration-thickness: 2px; /* Opcional: para destacar mais */
+}
+
+/* App.css */
+.bloco-questao {
+  background-color: #EBFAE6; /* Fundo verde bem clarinho igual da imagem */
+  border: 2px dashed #00B050; /* Borda verde tracejada */
+  padding: 15px;
+  margin: 1rem 0;
+  border-radius: 4px; /* Leve arredondamento */
+  font-family: sans-serif;
+  line-height: 1.5;
+}
+.bloco-questao strong {
+  font-weight: 800;
+  color: #000;
+}
+
+
+/* Cores de Texto */
+.texto-amarelo {
+  background-color: yellow; /* ou color: yellow, dependendo do seu objetivo */
+  color: black; 
+}
+
+.texto-verde {
+  color: green;
+  font-weight: bold; /* Opcional */
+}
+
+.texto-novo {
+  color: blue; /* A cor azul que você queria */
+}
+
+/* Formatação */
+.negrito-custom {
+  font-weight: 900;
+  color: #333;
+}
+
+.sublinhado-vermelho {
+  text-decoration: underline;
+  text-decoration-color: red;
+  text-decoration-thickness: 2px;
+}
+
+
+.bloco-jurisprudencia {
+  background-color: #e3f2fd; /* Fundo azul claro */
+  padding: 10px;
+  border-left: 4px solid blue;
+  margin: 10px 0;
+}
 }

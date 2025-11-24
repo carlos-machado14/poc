@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Editor de Estilos â€“ Completo</title>
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        display: flex;
+        background: #f4f4f4;
+    }
+
+    .editor-container {
+        flex: 1;
+        padding: 30px;
+        background: #fff;
+        min-height: 100vh;
+        line-height: 1.6;
+    }
+
+    .sidebar {
+        width: 260px;
+        background: #fafafa;
+        border-left: 1px solid #ddd;
+        padding: 20px;
+    }
+
+    .sidebar h3 {
+        margin-top: 0;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    .style-button {
+        width: 100%;
+        margin-bottom: 14px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        text-align: left;
+        font-size: 14px;
+        border-radius: 6px;
+        background: #fff;
+    }
+    .style-button:hover {
+        background: #eee;
+    }
+
+    /* ------- ESTILOS APLICÃVEIS (BLOCO) ------- */
+
+    .bloco-verde,
+    .bloco-azul,
+    .bloco-neutro {
+        position: relative;
+    }
+
+    .bloco-verde {
+        border: 2px dashed #00A86B;
+        background: #fff;
+        padding: 16px;
+        border-radius: 6px;
+        margin: 18px 0;
+    }
+
+    .bloco-azul {
+        border: 2px dashed #00A86B;
+        background: #EAF5FF;
+        padding: 16px;
+        border-radius: 6px;
+        margin: 18px 0;
+    }
+
+    .bloco-neutro {
+        background: #F4F4F4;
+        padding: 12px;
+        border-radius: 4px;
+        margin: 18px 0;
+    }
+
+    /* ------- ESTILOS APLICÃVEIS (INLINE) ------- */
+
+    .texto-amarelo,
+    .texto-verde,
+    .negrito {
+        position: relative;       /* para suportar o X */
+        display: inline-block;    /* para o X ficar relativo ao trecho */
+    }
+
+    .texto-amarelo {
+        background: #FFF36A;
+        font-weight: 700;
+        padding: 2px 3px;
+        border-radius: 2px;
+    }
+
+    .texto-verde {
+        background: #C8F7C5;
+        font-weight: 700;
+        padding: 2px 3px;
+        border-radius: 2px;
+    }
+
+    .negrito {
+        font-weight: 700;
+    }
+
+    /* BotÃ£o X genÃ©rico */
+    .remove-style-btn {
+        display: none;
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #ff4d4d;
+        color: white;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        font-size: 14px;
+        line-height: 22px;
+        text-align: center;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+        z-index: 10;
+    }
+
+    /* Mostrar X em blocos */
+    .bloco-verde:hover .remove-style-btn,
+    .bloco-azul:hover .remove-style-btn,
+    .bloco-neutro:hover .remove-style-btn {
+        display: block;
+    }
+
+    /* Mostrar X em inline */
+    .texto-amarelo:hover .remove-style-btn,
+    .texto-verde:hover .remove-style-btn,
+    .negrito:hover .remove-style-btn {
+        display: block;
+    }
+
+    /* RepresentaÃ§Ã£o visual nos botÃµes da sidebar */
+    .btn-preview-bloco-verde {
+        border: 2px dashed #00A86B;
+        padding: 6px;
+        background:#fff;
+    }
+    .btn-preview-bloco-azul {
+        border: 2px dashed #00A86B;
+        padding: 6px;
+        background:#EAF5FF;
+    }
+    .btn-preview-bloco-neutro {
+        padding: 6px;
+        background:#F4F4F4;
+    }
+    .btn-preview-texto-amarelo {
+        background:#FFF36A;
+        font-weight:700;
+        padding:2px 3px;
+    }
+    .btn-preview-texto-verde {
+        background:#C8F7C5;
+        font-weight:700;
+        padding:2px 3px;
+    }
+    .btn-preview-negrito {
+        font-weight:700;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="editor-container" contenteditable="true" id="editor">
+
+    <h1>Exemplos para Teste de Estilos</h1>
+
+    <p>Este documento contÃ©m diversos tipos de textos para testar todos os estilos do editor. Selecione palavras, frases ou parÃ¡grafos inteiros e aplique os estilos na barra lateral Ã  direita.</p>
+
+    <h2>1. Conceitos Gerais</h2>
+
+    <p>O processo administrativo disciplinar Ã© um instrumento utilizado pela AdministraÃ§Ã£o PÃºblica para apurar infraÃ§Ãµes funcionais. Ele exige o respeito ao <span class="negrito">contraditÃ³rio</span> e Ã  <span class="negrito">ampla defesa</span>.</p>
+
+    <p>As infraÃ§Ãµes podem gerar consequÃªncias administrativas, civis e penais. O sistema segue o princÃ­pio da independÃªncia das instÃ¢ncias.</p>
+
+    <h2>2. Texto para Teste de Blocos</h2>
+
+    <p>Este parÃ¡grafo foi criado para ser transformado em um bloco verde tracejado. Basta clicar no botÃ£o correspondente.</p>
+
+    <p>Outro parÃ¡grafo simples para testar destaque completo. Pode ser Ãºtil aplicar o bloco azul ou neutro tambÃ©m.</p>
+
+    <h2>3. JurisprudÃªncia (para teste de blocos longos)</h2>
+
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque feugiat, nunc in semper varius.</p>
+
+    <p>Curabitur vel justo id justo ultricies semper. Nulla facilisi. Nullam dignissim massa at porta scelerisque.</p>
+
+    <h2>4. Artigos Simulados</h2>
+
+    <p><span class="negrito">Art. 1Âº.</span> Exemplo de artigo legislativo fictÃ­cio para testes. Selecione parte dele e aplique marca-texto.</p>
+
+    <p><span class="negrito">Art. 2Âº.</span> Outro artigo fictÃ­cio. Teste blocos e inline juntos.</p>
+
+    <h2>5. Lista de Itens</h2>
+
+    <p>Teste estilos tambÃ©m em listas:</p>
+
+    <ul>
+        <li>Item 1 â€“ aplicar Texto Verde.</li>
+        <li>Item 2 â€“ aplicar Texto Amarelo.</li>
+        <li>Item 3 â€“ aplicar Negrito.</li>
+    </ul>
+
+    <h2>6. ParÃ¡grafos Longos</h2>
+
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla sagittis finibus ex, id hendrerit lectus ornare sit amet. Curabitur non elit nisl.</p>
+
+    <p>Integer vel lacus non nisl malesuada aliquam. Sed id velit tincidunt, mattis lorem vel, egestas erat. Cras pharetra leo ac nibh aliquet viverra.</p>
+
+    <h2>7. Bloco Neutro</h2>
+
+    <p>Abaixo um parÃ¡grafo ideal para virar bloco neutro.</p>
+
+    <p>A neutralidade deste texto Ã© proposital para observaÃ§Ã£o clara do fundo cinza e margem aplicada.</p>
+
+</div>
+
+
+
+<div class="sidebar">
+    <h3>Estilos</h3>
+
+    <button class="style-button btn-preview-bloco-verde" onclick="applyBlockStyle('bloco-verde')">
+        Bloco Verde Tracejado
+    </button>
+
+    <button class="style-button btn-preview-bloco-azul" onclick="applyBlockStyle('bloco-azul')">
+        Bloco Azul Claro
+    </button>
+
+    <button class="style-button btn-preview-bloco-neutro" onclick="applyBlockStyle('bloco-neutro')">
+        Bloco Neutro
+    </button>
+
+    <button class="style-button btn-preview-texto-amarelo" onclick="applyInlineStyle('texto-amarelo')">
+        Texto Amarelo
+    </button>
+
+    <button class="style-button btn-preview-texto-verde" onclick="applyInlineStyle('texto-verde')">
+        Texto Verde
+    </button>
+
+    <button class="style-button btn-preview-negrito" onclick="applyInlineStyle('negrito')">
+        Negrito
+    </button>
+</div>
+
+
+<script>
+
+/* ======================================
+   APLICAR ESTILO INLINE
+   ====================================== */
+function applyInlineStyle(className) {
+    document.execCommand("styleWithCSS", false, true);
+
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    const range = selection.getRangeAt(0);
+
+    // Cria span com classe de estilo
+    const span = document.createElement("span");
+    span.className = className;
+
+    // Move conteÃºdo selecionado para dentro do span
+    span.appendChild(range.extractContents());
+
+    // Cria botÃ£o X para remover estilo inline
+    const btn = document.createElement("span");
+    btn.className = "remove-style-btn";
+    btn.innerHTML = "Ã—";
+    btn.onclick = () => removeInlineStyle(btn);
+
+    span.appendChild(btn);
+
+    // Insere span no lugar da seleÃ§Ã£o
+    range.insertNode(span);
+}
+
+
+/* ======================================
+   REMOVER ESTILO INLINE
+   ====================================== */
+function removeInlineStyle(btn) {
+    const span = btn.parentNode;          // o span estilizado
+    const parent = span.parentNode;
+
+    // remove o botÃ£o X do span
+    span.removeChild(btn);
+
+    // move os filhos do span para o pai (flatten)
+    while (span.firstChild) {
+        parent.insertBefore(span.firstChild, span);
+    }
+
+    // remove o span vazio
+    parent.removeChild(span);
+}
+
+
+/* ======================================
+   APLICAR ESTILO DE BLOCO
+   ====================================== */
+function applyBlockStyle(className) {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
+
+    let node = selection.anchorNode;
+
+    while (node && node.nodeName !== "P") {
+        node = node.parentNode;
+    }
+
+    if (node) {
+
+        node.classList.remove("bloco-verde","bloco-azul","bloco-neutro");
+        node.classList.add(className);
+
+        const existing = node.querySelector(".remove-style-btn");
+        if (existing) existing.remove();
+
+        const btn = document.createElement("div");
+        btn.className = "remove-style-btn";
+        btn.innerHTML = "Ã—";
+        btn.onclick = () => removeBlockStyle(btn);
+
+        node.appendChild(btn);
+    }
+}
+
+
+/* ======================================
+   REMOVER ESTILO DE BLOCO
+   ====================================== */
+function removeBlockStyle(btn) {
+    const p = btn.parentNode;
+    p.classList.remove("bloco-verde","bloco-azul","bloco-neutro");
+    btn.remove();
+}
+
+</script>
+
+</body>
+</html>
