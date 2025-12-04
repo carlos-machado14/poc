@@ -9,10 +9,18 @@ import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import { TextStyle } from '@tiptap/extension-text-style';
 import FontFamily from '@tiptap/extension-font-family';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableWithAttributes } from '../extensions/tableWithAttributes';
+import { TableCellWithAttributes } from '../extensions/tableCellWithAttributes';
+import { TableHeaderWithAttributes } from '../extensions/tableHeaderWithAttributes';
 import { getNote, getFile } from '../db';
 import { TextoAmarelo, TextoVerde, NegritoCustom } from '../extensions/customStyles';
 import { ParagraphWithClass } from '../extensions/paragraphWithClass';
 import { FontSize } from '../extensions/fontSize';
+import { BackgroundColor } from '../extensions/backgroundColor';
+import { MarkBlue } from '../extensions/MarkBlue';
+import { MarkYellow } from '../extensions/MarkYellow';
+import { MarkGreen } from '../extensions/MarkGreen';
 import '../App.css';
 import './Viewer.css';
 
@@ -21,17 +29,145 @@ const getStorageKey = (baseKey: string, fileId?: string) => {
   return fileId ? `${baseKey}_${fileId}` : baseKey;
 };
 
+// Mapeamento de classes do conversor-docx para classes do editor
+const CONVERTER_CLASS_MAP: Record<string, string> = {
+  'citacao': 'bloco-citacao',
+  'jurisprudencia': 'bloco-jurisprudencia',
+  'pontilhado-verde': 'bloco-pontilhado-verde',
+  'mark-yellow': 'mark-yellow',
+  'mark-blue': 'mark-blue',
+  'mark-green': 'mark-green',
+};
+
+// Função para normalizar classes do conversor-docx para classes do editor
+const normalizeConverterClasses = (html: string): string => {
+  let normalized = html;
+  
+  // Normalizar classes de parágrafos/blocos
+  Object.entries(CONVERTER_CLASS_MAP).forEach(([converterClass, editorClass]) => {
+    // Substituir class="citacao" por class="bloco-citacao" (mantendo outras classes)
+    const regex = new RegExp(`(class="[^"]*\\b)${converterClass}(\\b[^"]*")`, 'gi');
+    normalized = normalized.replace(regex, (match, before, after) => {
+      // Se já tem a classe do editor, não adiciona duplicada
+      if (match.includes(editorClass)) {
+        return match.replace(new RegExp(`\\b${converterClass}\\b`, 'gi'), '');
+      }
+      return `${before}${editorClass}${after}`;
+    });
+    
+    // Caso especial: class="citacao" sem outras classes
+    normalized = normalized.replace(
+      new RegExp(`class="${converterClass}"`, 'gi'),
+      `class="${editorClass}"`
+    );
+  });
+  
+  return normalized;
+};
+
+// Função para normalizar todas as tags <font> para <span> com estilos apropriados
+const normalizeFontColor = (html: string): string => {
+  let normalized = html;
+  
+  // Mapeamento de tamanhos de fonte (size="1" a size="7" para pt)
+  const fontSizeMap: Record<string, string> = {
+    '1': '8pt',
+    '2': '10pt',
+    '3': '12pt',
+    '4': '14pt',
+    '5': '18pt',
+    '6': '24pt',
+    '7': '36pt',
+  };
+  
+  // Processa todas as tags <font> e converte para <span>
+  normalized = normalized.replace(
+    /<font([^>]*?)>/gi,
+    (match, attrs) => {
+      const styles: string[] = [];
+      let remainingAttrs = attrs;
+      
+      // Extrai e processa atributo color
+      const colorMatch = attrs.match(/color=["']([^"']+)["']/i);
+      if (colorMatch) {
+        const color = colorMatch[1];
+        const normalizedColor = color.startsWith('#') ? color : `#${color}`;
+        styles.push(`color: ${normalizedColor}`);
+        remainingAttrs = remainingAttrs.replace(/color=["'][^"']+["']/gi, '').trim();
+      }
+      
+      // Extrai e processa atributo face (font-family)
+      const faceMatch = attrs.match(/face=["']([^"']+)["']/i);
+      if (faceMatch) {
+        const fontFamily = faceMatch[1];
+        styles.push(`font-family: ${fontFamily}`);
+        remainingAttrs = remainingAttrs.replace(/face=["'][^"']+["']/gi, '').trim();
+      }
+      
+      // Extrai e processa atributo size
+      const sizeMatch = attrs.match(/size=["']([^"']+)["']/i);
+      if (sizeMatch) {
+        const size = sizeMatch[1];
+        const fontSize = fontSizeMap[size] || `${size}pt`;
+        styles.push(`font-size: ${fontSize}`);
+        remainingAttrs = remainingAttrs.replace(/size=["'][^"']+["']/gi, '').trim();
+      }
+      
+      // Extrai style existente se houver
+      const styleMatch = attrs.match(/style=["']([^"']*)["']/i);
+      if (styleMatch) {
+        const existingStyle = styleMatch[1];
+        // Remove propriedades que já foram processadas dos atributos
+        const cleanedStyle = existingStyle
+          .replace(/color:\s*[^;]+;?/gi, '')
+          .replace(/font-family:\s*[^;]+;?/gi, '')
+          .replace(/font-size:\s*[^;]+;?/gi, '')
+          .trim();
+        if (cleanedStyle) {
+          styles.push(cleanedStyle);
+        }
+        remainingAttrs = remainingAttrs.replace(/style=["'][^"']*["']/gi, '').trim();
+      }
+      
+      // Combina todos os estilos
+      const finalStyle = styles.length > 0 ? styles.join('; ') : null;
+      
+      // Remove espaços extras e constrói o novo atributo
+      remainingAttrs = remainingAttrs.replace(/\s+/g, ' ').trim();
+      
+      // Constrói a tag <span> com os atributos restantes e o style
+      let spanAttrs = remainingAttrs;
+      if (finalStyle) {
+        if (spanAttrs) {
+          spanAttrs = `${spanAttrs} style="${finalStyle}"`;
+        } else {
+          spanAttrs = `style="${finalStyle}"`;
+        }
+      }
+      
+      return `<span${spanAttrs ? ' ' + spanAttrs : ''}>`;
+    }
+  );
+  
+  // Converte todas as tags </font> para </span>
+  normalized = normalized.replace(/<\/font>/gi, '</span>');
+  
+  return normalized;
+};
+
 // Definição da interface Marking (Simplificação do campo `startPath/endPath` - são muito instáveis para grandes refatorações)
 interface Marking {
   id: string;
   text: string;
   startOffset: number;
   endOffset: number;
-  color: string;
   comment?: string;
   createdAt: number;
   markerId: string;
 }
+
+// Cor fixa para marcações (amarelo)
+const MARKING_COLOR = '#FFF36A';
 
 interface ViewerProps {
   onBack: () => void;
@@ -71,7 +207,7 @@ const normalizeHtmlContent = (html: string) => html.replace(/[\n\r\t]/g, '').rep
 const applyMarkingToContentFallback = (content: string, marking: Marking): string => {
     
     // Tentar encontrar o texto sem a tag <mark> ao redor
-    const markStartTag = `<mark data-marking-id="mark-${marking.markerId}" style="background-color: ${marking.color}; cursor: pointer;" title="${marking.comment || 'Sem comentário'}">`;
+    const markStartTag = `<mark data-marking-id="mark-${marking.markerId}" style="background-color: ${MARKING_COLOR}; cursor: pointer;" title="${marking.comment || 'Clique para adicionar comentário'}">`;
     const markEndTag = `</mark>`;
 
     let index = content.indexOf(marking.text);
@@ -109,7 +245,6 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
   const [selectedMarking, setSelectedMarking] = useState<Marking | null>(null);
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [commentText, setCommentText] = useState('');
-  const [markingColor, setMarkingColor] = useState('#FFF36A');
   const [fileName, setFileName] = useState<string>('');
   const [originalContent, setOriginalContent] = useState<string>('');
   const savedRangeRef = useRef<Range | null>(null);
@@ -128,26 +263,19 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
       Highlight.configure({ multicolor: true }), Link.configure({ openOnClick: false, HTMLAttributes: { class: 'editor-link' } }),
       Image.configure({ inline: true, allowBase64: true }), TextStyle,
       FontFamily.configure({ types: ['textStyle'] }), FontSize,
-      TextoAmarelo, TextoVerde, NegritoCustom,
+      BackgroundColor,
+      TextoAmarelo, TextoVerde, NegritoCustom, MarkBlue, MarkYellow, MarkGreen, 
+      TableWithAttributes.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeaderWithAttributes,
+      TableCellWithAttributes,
     ],
     content: '',
     editable: false, // O visualizador deve ser *sempre* não-editável
   });
 
-  // Salvar a cor selecionada (persistência simples para melhor UX)
-  useEffect(() => {
-    const savedColor = localStorage.getItem('viewer_marking_color');
-    if (savedColor) {
-      setMarkingColor(savedColor);
-    }
-  }, []);
-
-  // Handler para cor, persistindo o valor
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newColor = e.target.value;
-    setMarkingColor(newColor);
-    localStorage.setItem('viewer_marking_color', newColor);
-  };
   
   // Função para limpar todas as tags <mark> existentes no HTML
   const stripMarkingTags = useCallback((html: string) => {
@@ -199,13 +327,20 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
         // Carregar arquivo específico
         const file = await getFile(fileId);
         if (file) {
-          currentContent = file.content;
+          // Normalizar classes do conversor-docx ao carregar
+          currentContent = normalizeConverterClasses(file.content);
+          // Normalizar tags <font color> para <span style="color: ...">
+          currentContent = normalizeFontColor(currentContent);
           setFileName(file.name);
         }
       } else {
         // Fallback: carregar nota antiga (compatibilidade)
         const note = await getNote();
-        currentContent = note?.content || '';
+        const rawContent = note?.content || '';
+        // Normalizar classes do conversor-docx ao carregar
+        currentContent = normalizeConverterClasses(rawContent);
+        // Normalizar tags <font color> para <span style="color: ...">
+        currentContent = normalizeFontColor(currentContent);
       }
 
       const loadedMarkings = loadMarkings(fileId);
@@ -328,7 +463,6 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
       text: selectedText,
       startOffset: -1, // Marcadores de posição DOM instáveis, -1
       endOffset: -1, 
-      color: markingColor,
       createdAt: Date.now(),
       markerId: `mark-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // ID único no DOM
     };
@@ -361,8 +495,8 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
         try {
             const mark = document.createElement('mark');
             mark.setAttribute('data-marking-id', newMarking.markerId);
-            mark.setAttribute('style', `background-color: ${newMarking.color}; cursor: pointer;`);
-            mark.setAttribute('title', newMarking.comment || 'Sem comentário');
+            mark.setAttribute('style', `background-color: ${MARKING_COLOR}; cursor: pointer;`);
+            mark.setAttribute('title', newMarking.comment || 'Clique para adicionar comentário');
 
             // Usar extractContents/insertNode para maior robustez que surroundContents
             const contents = savedRangeRef.current.extractContents();
@@ -440,7 +574,7 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
     // Atualizar 'title' do mark diretamente no DOM para refletir o novo comentário
     const markElement = viewerRef.current.querySelector(`[data-marking-id="${selectedMarking.markerId}"]`);
     if (markElement) {
-        markElement.setAttribute('title', newComment || 'Sem comentário');
+        markElement.setAttribute('title', newComment || 'Clique para adicionar comentário');
         // Forçar o Tiptap a atualizar (Embora 'title' seja apenas HTML, ajuda na coerência)
         editor.commands.setContent(viewerRef.current.querySelector('.ProseMirror')!.innerHTML);
         localStorage.setItem(STORAGE_CONTENT_WITH_MARKINGS_KEY, editor.getHTML());
@@ -459,26 +593,20 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
   // --- JSX de Renderização ---
   return (
     <div className="app-container">
-      <header className="app-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+      <header className="viewer-header">
+        <div className="viewer-header-left">
           <button onClick={onBack} className="back-button" title="Voltar">
             ← Voltar
           </button>
-          <h1>👁️ Visualizador{fileName && ` - ${fileName}`}</h1>
+          <div className="viewer-title">
+            <h1>📖 Visualizador</h1>
+            {fileName && <span className="viewer-filename">{fileName}</span>}
+          </div>
         </div>
-
-        <div className="viewer-toolbar">
-          <div className="color-picker">
-            <label>Cor da marcação:</label>
-            <input
-              type="color"
-              value={markingColor}
-              onChange={handleColorChange}
-              title="Escolha a cor para as marcações"
-            />
-            <span style={{ background: markingColor, padding: '4px 8px', borderRadius: '4px' }}>
-              {markingColor}
-            </span>
+        <div className="viewer-header-right">
+          <div className="markings-count-badge">
+            <span className="markings-icon">✏️</span>
+            <span>{markings.length} {markings.length === 1 ? 'marcação' : 'marcações'}</span>
           </div>
         </div>
       </header>
@@ -486,7 +614,10 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
       <div className="main-content">
         <div className="viewer-wrapper">
           <div className="viewer-instructions">
-            <p>💡 <strong>Dica:</strong> Selecione um texto para *Adicionar* ou clique em uma marcação existente para *Editar*.</p>
+            <div className="instruction-icon">💡</div>
+            <div className="instruction-text">
+              <strong>Como usar:</strong> Selecione um texto para grifar em amarelo e adicionar um comentário. Clique em uma marcação existente para editar o comentário.
+            </div>
           </div>
 
           <div
@@ -501,42 +632,66 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
         </div>
 
         <div className="viewer-sidebar">
-          <h3>Marcações ({markings.length})</h3>
+          <div className="sidebar-header">
+            <h3>📝 Minhas Marcações</h3>
+            {markings.length > 0 && (
+              <span className="sidebar-count">{markings.length}</span>
+            )}
+          </div>
 
           {markings.length === 0 ? (
-            <p className="no-markings">Nenhuma marcação ainda. Selecione um texto para começar!</p>
+            <div className="no-markings">
+              <div className="no-markings-icon">✨</div>
+              <p className="no-markings-text">Nenhuma marcação ainda</p>
+              <p className="no-markings-hint">Selecione um texto para começar a grifar e adicionar comentários</p>
+            </div>
           ) : (
             <div className="markings-list">
               {[...markings].reverse().map((marking) => ( // Reverse para mostrar os mais recentes primeiro
                 <div key={marking.id} className="marking-item">
-                  <div className="marking-header">
-                    <span
-                      className="marking-color-indicator"
-                      style={{ backgroundColor: marking.color }}
-                    />
+                  <div className="marking-item-header">
+                    <div className="marking-item-actions">
+                      <button
+                        className="marking-edit-icon-btn"
+                        onClick={() => handleEditComment(marking)}
+                        title={marking.comment ? 'Editar comentário' : 'Adicionar comentário'}
+                      >
+                        {marking.comment ? '✏️' : '➕'}
+                      </button>
+                      <button
+                        className="marking-delete-icon-btn"
+                        onClick={() => handleDeleteMarking(marking.id)}
+                        title="Remover marcação"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                     <span className="marking-date">
-                      {new Date(marking.createdAt).toLocaleDateString()}
+                      {new Date(marking.createdAt).toLocaleDateString('pt-BR', {
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </span>
-                    <button
-                      className="marking-delete-btn"
-                      onClick={() => handleDeleteMarking(marking.id)}
-                      title="Excluir marcação"
-                    >
-                      ×
-                    </button>
                   </div>
-                  <div className="marking-text">{marking.text}</div>
-                  {marking.comment && (
-                    <div className="marking-comment">
-                      <strong>Comentário:</strong> {marking.comment}
+                  <div className="marking-text-preview">{marking.text}</div>
+                  {marking.comment ? (
+                    <div className="marking-comment-box">
+                      <div className="marking-comment-icon">💬</div>
+                      <div className="marking-comment-text">{marking.comment}</div>
+                    </div>
+                  ) : (
+                    <div className="marking-no-comment">
+                      <span className="marking-no-comment-text">Sem comentário</span>
+                      <button
+                        className="marking-add-comment-btn"
+                        onClick={() => handleEditComment(marking)}
+                      >
+                        Adicionar comentário
+                      </button>
                     </div>
                   )}
-                  <button
-                    className="marking-edit-btn"
-                    onClick={() => handleEditComment(marking)}
-                  >
-                    {marking.comment ? 'Editar' : 'Adicionar'} Comentário
-                  </button>
                 </div>
               ))}
             </div>
@@ -544,29 +699,48 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
         </div>
       </div>
 
-      {/* Modal de Comentário (Se precisar de refatoração, isole-o em um componente separado) */}
+      {/* Modal de Comentário */}
       {showCommentModal && selectedMarking && (
-        <div className="modal-overlay" onClick={() => setShowCommentModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3>
-              {markings.find((m) => m.id === selectedMarking.id)
-                ? 'Editar Comentário'
-                : 'Adicionar Marcação'}
-            </h3>
-            <div className="modal-selected-text">
-              <strong>Texto selecionado:</strong>
-              <p>"{selectedMarking.text}"</p>
-            </div>
-            <textarea
-              className="comment-textarea"
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Digite seu comentário aqui..."
-              rows={4}
-            />
-            <div className="modal-actions">
+        <div className="comment-modal-overlay" onClick={() => setShowCommentModal(false)}>
+          <div className="comment-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="comment-modal-header">
+              <h3>
+                {markings.find((m) => m.id === selectedMarking.id)
+                  ? '✏️ Editar Comentário'
+                  : '✨ Nova Marcação'}
+              </h3>
               <button
-                className="modal-btn cancel"
+                className="comment-modal-close"
+                onClick={() => {
+                  setShowCommentModal(false);
+                  setCommentText('');
+                  setSelectedMarking(null);
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="comment-modal-selected-text">
+              <div className="selected-text-label">Texto selecionado:</div>
+              <div className="selected-text-content">"{selectedMarking.text}"</div>
+            </div>
+            
+            <div className="comment-modal-input-section">
+              <label className="comment-label">Comentário (opcional)</label>
+              <textarea
+                className="comment-textarea"
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Digite seu comentário sobre este trecho..."
+                rows={5}
+                autoFocus
+              />
+            </div>
+            
+            <div className="comment-modal-actions">
+              <button
+                className="comment-modal-btn comment-modal-btn-cancel"
                 onClick={() => {
                   setShowCommentModal(false);
                   setCommentText('');
@@ -576,14 +750,14 @@ const Viewer: React.FC<ViewerProps> = ({ onBack, fileId }) => {
                 Cancelar
               </button>
               <button
-                className="modal-btn confirm"
+                className="comment-modal-btn comment-modal-btn-save"
                 onClick={
                   markings.find((m) => m.id === selectedMarking.id)
                     ? handleUpdateComment
                     : handleAddMarking
                 }
               >
-                {markings.find((m) => m.id === selectedMarking.id) ? 'Atualizar' : 'Adicionar'}
+                {markings.find((m) => m.id === selectedMarking.id) ? '💾 Salvar' : '✨ Criar Marcação'}
               </button>
             </div>
           </div>

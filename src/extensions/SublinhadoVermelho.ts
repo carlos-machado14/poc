@@ -7,28 +7,42 @@ import { Mark } from '@tiptap/core';
 export const SublinhadoVermelho = Mark.create({
   name: 'sublinhadoVermelho',
 
+  addAttributes() {
+    return {
+      class: {
+        default: 'sublinhado-vermelho',
+      },
+    };
+  },
+
   // Esquema Tiptap: Define a estrutura de como a Mark é armazenada
   // e renderizada para HTML.
   parseHTML() {
     return [
       {
+        tag: 'span.sublinhado-vermelho',
+      },
+      {
         tag: 'span',
-        // O seletor CSS que o Tiptap deve buscar ao carregar o HTML
-        // Gerado pelo mammoth, que mapeamos para r[style-name='Sublinhado Vermelho'] => span.sublinhado-vermelho
-        getAttrs: (node) => (node as HTMLElement).classList.contains('sublinhado-vermelho') && null,
+        getAttrs: (node) => {
+          const element = node as HTMLElement;
+          // Verifica se tem a classe mark-yellow ou background #ffff00
+          if (element.classList.contains('sublinhado-vermelho')) {
+            return null;
+          }
+          const style = element.getAttribute('style') || '';
+          if (style.includes('text-decoration: underline;') && style.includes('text-decoration-color: red;')) {
+            return null;
+          }
+          return false;
+        },
       },
     ];
   },
 
   // Define como a Mark é renderizada para HTML
-  renderHTML({ mark }) {
-    return [
-      'span', 
-      { 
-        class: 'sublinhado-vermelho', // Classe que será aplicada ao <span>
-        'data-mark-type': this.name // Opcional: Para fácil identificação
-      }, 
-      0
-    ];
+  renderHTML({ HTMLAttributes }) {
+    // O TipTap automaticamente injeta os atributos definidos em addAttributes nos HTMLAttributes
+    return ['span', HTMLAttributes, 0];
   },
 });

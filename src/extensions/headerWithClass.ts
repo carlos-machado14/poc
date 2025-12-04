@@ -1,6 +1,6 @@
-import Paragraph from '@tiptap/extension-paragraph';
+import Header from '@tiptap/extension-heading';
 
-export const ParagraphWithClass = Paragraph.extend({
+export const HeaderWithClass = Header.extend({
   addAttributes() {
     return {
       ...this.parent?.(),

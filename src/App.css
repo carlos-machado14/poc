@@ -16,10 +16,79 @@
   z-index: 10;
 }
 
-.app-header h1 {
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.document-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.document-title {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a237e;
+}
+
+.document-tag {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background-color: #4caf50;
+  color: #ffffff;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.header-right {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.header-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  background-color: #ffffff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
   color: #333;
+  transition: all 0.2s;
+}
+
+.header-btn:hover {
+  background-color: #f0f0f0;
+  border-color: #bbb;
+}
+
+.header-btn.back-btn {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.header-btn.back-btn:hover {
+  background-color: #e0e0e0;
+  border-color: #bbb;
+}
+
+.publish-btn {
+  background-color: #4caf50;
+  color: #ffffff;
+  border-color: #4caf50;
+}
+
+.publish-btn:hover {
+  background-color: #45a049;
+  border-color: #45a049;
 }
 
 .back-button {
@@ -54,9 +123,11 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;
+  background-color: #f4f4f4;
   overflow: hidden;
   height: 100%;
+  align-items: center;
+  overflow-y: auto;
 }
 
 .toolbar {
@@ -99,8 +170,42 @@
   cursor: pointer;
   font-size: 0.9rem;
   transition: all 0.2s;
-  min-width: 120px;
+  min-width: 100px;
   font-family: inherit;
+}
+
+.font-size-control {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.25rem;
+  background-color: #ffffff;
+}
+
+.size-btn {
+  padding: 0.25rem 0.5rem;
+  min-width: 30px;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.font-size-display {
+  padding: 0 0.5rem;
+  font-size: 0.9rem;
+  min-width: 30px;
+  text-align: center;
+}
+
+.toolbar-color-picker {
+  width: 40px;
+  height: 36px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 2px;
+  background-color: #ffffff;
 }
 
 .toolbar-select:hover {
@@ -146,27 +251,88 @@
 }
 
 /* Estilos do TipTap Editor */
+.editor-content-wrapper {
+  flex: 1;
+  padding: 20px;
+  border: 2px dashed #9c27b0;
+  margin: 20px auto;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  max-width: 794px; /* Largura A4 (210mm) */
+  width: 100%;
+}
+
 .editor-content {
   flex: 1;
   padding: 30px;
   overflow-y: auto;
   overflow-x: hidden;
-  font-family: Arial, sans-serif;
-  font-size: 16px;
-  line-height: 1.6;
+  font-family: Calibri, 'Calibri', 'Segoe UI', sans-serif;
+  font-size: 11pt;
+  justify-content: flex-start;
+  align-items: justify;
+  line-height: 1.5;
   color: #333;
   background-color: #ffffff;
-  max-height: calc(100vh - 200px);
   height: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Quando há uma capa, remover padding superior para começar no topo */
+.editor-content .ProseMirror > .capa-container:first-child,
+.editor-content .ProseMirror > [class*="capa"]:first-child,
+.editor-content .ProseMirror > div:first-child[style*="position"] {
+  margin-top: -30px;
+  padding-top: 0;
 }
 
 .editor-content .ProseMirror {
   outline: none;
   min-height: 100%;
+  font-size: 11pt; /* Garantir que o padrão seja 11pt */
+  position: relative;
+}
+
+/* Garantir que o primeiro elemento da capa não tenha espaçamento superior */
+.editor-content .ProseMirror > *:first-child {
+  margin-top: 0;
+}
+
+/* Se o primeiro elemento for uma capa, remover todo o espaçamento */
+.editor-content .ProseMirror > .capa-container:first-child,
+.editor-content .ProseMirror > [class*="capa"]:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+.editor-content .ProseMirror p,
+.editor-content .ProseMirror div,
+.editor-content .ProseMirror span,
+.editor-content .ProseMirror li,
+.editor-content .ProseMirror td,
+.editor-content .ProseMirror th,
+.editor-content .ProseMirror ul,
+.editor-content .ProseMirror ol,
+.editor-content .ProseMirror blockquote,
+.editor-content .ProseMirror strong,
+.editor-content .ProseMirror em,
+.editor-content .ProseMirror b,
+.editor-content .ProseMirror i,
+.editor-content .ProseMirror u,
+.editor-content .ProseMirror a,
+.editor-content .ProseMirror code,
+.editor-content .ProseMirror pre {
+  font-size: 11pt; /* Padronizar todos os elementos para 11pt */
 }
 
 .editor-content .ProseMirror p {
-  margin: 0.5rem 0;
+  margin: 0;
+  padding: 0;
+  text-indent: 0;
 }
 
 .editor-content .ProseMirror p:first-child {
@@ -185,18 +351,7 @@
 .editor-content .ProseMirror h6 {
   margin: 1.5rem 0 0.5rem 0;
   font-weight: bold;
-}
-
-.editor-content .ProseMirror h1 {
-  font-size: 2em;
-}
-
-.editor-content .ProseMirror h2 {
-  font-size: 1.5em;
-}
-
-.editor-content .ProseMirror h3 {
-  font-size: 1.17em;
+  font-size: 11pt; /* Padronizar todos os headings para 11pt */
 }
 
 .editor-content .ProseMirror ul,
@@ -231,26 +386,112 @@
 }
 
 /* ------- ESTILOS APLICÁVEIS (BLOCO) ------- */
-.editor-content .ProseMirror p.bloco-verde,
-.editor-content .ProseMirror p.bloco-azul,
 .editor-content .ProseMirror p.bloco-neutro {
   position: relative;
 }
 
-.editor-content .ProseMirror p.bloco-verde {
-  border: 2px dashed #00A86B;
-  background: #fff;
-  padding: 16px;
-  border-radius: 6px;
+.editor-content .ProseMirror p.bloco-jurisprudencia,
+.editor-content .ProseMirror h1.bloco-jurisprudencia,
+.editor-content .ProseMirror h2.bloco-jurisprudencia,
+.editor-content .ProseMirror h3.bloco-jurisprudencia,
+.editor-content .ProseMirror h4.bloco-jurisprudencia,
+.editor-content .ProseMirror h5.bloco-jurisprudencia,
+.editor-content .ProseMirror h6.bloco-jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia,
+.editor-content .ProseMirror h1.jurisprudencia,
+.editor-content .ProseMirror h2.jurisprudencia,
+.editor-content .ProseMirror h3.jurisprudencia,
+.editor-content .ProseMirror h4.jurisprudencia,
+.editor-content .ProseMirror h5.jurisprudencia,
+.editor-content .ProseMirror h6.jurisprudencia {
+  border: 2pt dashed #00A86B;
+  background: #e2efd9;
+  background-color: #e2efd9;
+  padding: 8px;
+  width: 100%;
   margin: 18px 0;
+  box-sizing: border-box;
 }
 
-.editor-content .ProseMirror p.bloco-azul {
-  border: 2px dashed #00A86B;
+/* Agrupar elementos consecutivos de jurisprudencia */
+.editor-content .ProseMirror p.bloco-jurisprudencia + p.bloco-jurisprudencia,
+.editor-content .ProseMirror h1.bloco-jurisprudencia + h1.bloco-jurisprudencia,
+.editor-content .ProseMirror h2.bloco-jurisprudencia + h2.bloco-jurisprudencia,
+.editor-content .ProseMirror h3.bloco-jurisprudencia + h3.bloco-jurisprudencia,
+.editor-content .ProseMirror h4.bloco-jurisprudencia + h4.bloco-jurisprudencia,
+.editor-content .ProseMirror h5.bloco-jurisprudencia + h5.bloco-jurisprudencia,
+.editor-content .ProseMirror h6.bloco-jurisprudencia + h6.bloco-jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia + p.jurisprudencia,
+.editor-content .ProseMirror h1.jurisprudencia + h1.jurisprudencia,
+.editor-content .ProseMirror h2.jurisprudencia + h2.jurisprudencia,
+.editor-content .ProseMirror h3.jurisprudencia + h3.jurisprudencia,
+.editor-content .ProseMirror h4.jurisprudencia + h4.jurisprudencia,
+.editor-content .ProseMirror h5.jurisprudencia + h5.jurisprudencia,
+.editor-content .ProseMirror h6.jurisprudencia + h6.jurisprudencia,
+/* Agrupar entre diferentes tipos (p seguido de h, etc) */
+.editor-content .ProseMirror p.bloco-jurisprudencia + h1.bloco-jurisprudencia,
+.editor-content .ProseMirror p.bloco-jurisprudencia + h2.bloco-jurisprudencia,
+.editor-content .ProseMirror p.bloco-jurisprudencia + h3.bloco-jurisprudencia,
+.editor-content .ProseMirror p.bloco-jurisprudencia + h4.bloco-jurisprudencia,
+.editor-content .ProseMirror p.bloco-jurisprudencia + h5.bloco-jurisprudencia,
+.editor-content .ProseMirror p.bloco-jurisprudencia + h6.bloco-jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia + h1.jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia + h2.jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia + h3.jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia + h4.jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia + h5.jurisprudencia,
+.editor-content .ProseMirror p.jurisprudencia + h6.jurisprudencia,
+.editor-content .ProseMirror h1.bloco-jurisprudencia + p.bloco-jurisprudencia,
+.editor-content .ProseMirror h2.bloco-jurisprudencia + p.bloco-jurisprudencia,
+.editor-content .ProseMirror h3.bloco-jurisprudencia + p.bloco-jurisprudencia,
+.editor-content .ProseMirror h4.bloco-jurisprudencia + p.bloco-jurisprudencia,
+.editor-content .ProseMirror h5.bloco-jurisprudencia + p.bloco-jurisprudencia,
+.editor-content .ProseMirror h6.bloco-jurisprudencia + p.bloco-jurisprudencia,
+.editor-content .ProseMirror h1.jurisprudencia + p.jurisprudencia,
+.editor-content .ProseMirror h2.jurisprudencia + p.jurisprudencia,
+.editor-content .ProseMirror h3.jurisprudencia + p.jurisprudencia,
+.editor-content .ProseMirror h4.jurisprudencia + p.jurisprudencia,
+.editor-content .ProseMirror h5.jurisprudencia + p.jurisprudencia,
+.editor-content .ProseMirror h6.jurisprudencia + p.jurisprudencia {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+  padding-top: 0;
+}
+
+.editor-content .ProseMirror p.citacao {
+  border: 2pt dashed #00A86B;
   background: #EAF5FF;
-  padding: 16px;
-  border-radius: 6px;
+  background-color: #EAF5FF;
+  padding: 8px;
+  width: 100%;
   margin: 18px 0;
+  box-sizing: border-box;
+}
+
+/* Agrupar elementos consecutivos de citacao */
+.editor-content .ProseMirror p.citacao + p.citacao,
+.editor-content .ProseMirror h1.citacao + h1.citacao,
+.editor-content .ProseMirror h2.citacao + h2.citacao,
+.editor-content .ProseMirror h3.citacao + h3.citacao,
+.editor-content .ProseMirror h4.citacao + h4.citacao,
+.editor-content .ProseMirror h5.citacao + h5.citacao,
+.editor-content .ProseMirror h6.citacao + h6.citacao,
+.editor-content .ProseMirror p.citacao + h1.citacao,
+.editor-content .ProseMirror p.citacao + h2.citacao,
+.editor-content .ProseMirror p.citacao + h3.citacao,
+.editor-content .ProseMirror p.citacao + h4.citacao,
+.editor-content .ProseMirror p.citacao + h5.citacao,
+.editor-content .ProseMirror p.citacao + h6.citacao,
+.editor-content .ProseMirror h1.citacao + p.citacao,
+.editor-content .ProseMirror h2.citacao + p.citacao,
+.editor-content .ProseMirror h3.citacao + p.citacao,
+.editor-content .ProseMirror h4.citacao + p.citacao,
+.editor-content .ProseMirror h5.citacao + p.citacao,
+.editor-content .ProseMirror h6.citacao + p.citacao {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .editor-content .ProseMirror p.bloco-neutro {
@@ -258,6 +499,154 @@
   padding: 12px;
   border-radius: 4px;
   margin: 18px 0;
+}
+
+/* Agrupar elementos consecutivos de bloco-neutro */
+.editor-content .ProseMirror p.bloco-neutro + p.bloco-neutro,
+.editor-content .ProseMirror h1.bloco-neutro + h1.bloco-neutro,
+.editor-content .ProseMirror h2.bloco-neutro + h2.bloco-neutro,
+.editor-content .ProseMirror h3.bloco-neutro + h3.bloco-neutro,
+.editor-content .ProseMirror h4.bloco-neutro + h4.bloco-neutro,
+.editor-content .ProseMirror h5.bloco-neutro + h5.bloco-neutro,
+.editor-content .ProseMirror h6.bloco-neutro + h6.bloco-neutro,
+.editor-content .ProseMirror p.bloco-neutro + h1.bloco-neutro,
+.editor-content .ProseMirror p.bloco-neutro + h2.bloco-neutro,
+.editor-content .ProseMirror p.bloco-neutro + h3.bloco-neutro,
+.editor-content .ProseMirror p.bloco-neutro + h4.bloco-neutro,
+.editor-content .ProseMirror p.bloco-neutro + h5.bloco-neutro,
+.editor-content .ProseMirror p.bloco-neutro + h6.bloco-neutro,
+.editor-content .ProseMirror h1.bloco-neutro + p.bloco-neutro,
+.editor-content .ProseMirror h2.bloco-neutro + p.bloco-neutro,
+.editor-content .ProseMirror h3.bloco-neutro + p.bloco-neutro,
+.editor-content .ProseMirror h4.bloco-neutro + p.bloco-neutro,
+.editor-content .ProseMirror h5.bloco-neutro + p.bloco-neutro,
+.editor-content .ProseMirror h6.bloco-neutro + p.bloco-neutro {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.editor-content .ProseMirror p.bloco-pontilhado-verde {
+  border: 2pt dashed #00A86B;
+  padding: 8px;
+  width: 100%;
+  margin: 18px 0;
+  box-sizing: border-box;
+}
+
+/* Agrupar elementos consecutivos de bloco-pontilhado-verde */
+.editor-content .ProseMirror p.bloco-pontilhado-verde + p.bloco-pontilhado-verde,
+.editor-content .ProseMirror h1.bloco-pontilhado-verde + h1.bloco-pontilhado-verde,
+.editor-content .ProseMirror h2.bloco-pontilhado-verde + h2.bloco-pontilhado-verde,
+.editor-content .ProseMirror h3.bloco-pontilhado-verde + h3.bloco-pontilhado-verde,
+.editor-content .ProseMirror h4.bloco-pontilhado-verde + h4.bloco-pontilhado-verde,
+.editor-content .ProseMirror h5.bloco-pontilhado-verde + h5.bloco-pontilhado-verde,
+.editor-content .ProseMirror h6.bloco-pontilhado-verde + h6.bloco-pontilhado-verde,
+.editor-content .ProseMirror p.bloco-pontilhado-verde + h1.bloco-pontilhado-verde,
+.editor-content .ProseMirror p.bloco-pontilhado-verde + h2.bloco-pontilhado-verde,
+.editor-content .ProseMirror p.bloco-pontilhado-verde + h3.bloco-pontilhado-verde,
+.editor-content .ProseMirror p.bloco-pontilhado-verde + h4.bloco-pontilhado-verde,
+.editor-content .ProseMirror p.bloco-pontilhado-verde + h5.bloco-pontilhado-verde,
+.editor-content .ProseMirror p.bloco-pontilhado-verde + h6.bloco-pontilhado-verde,
+.editor-content .ProseMirror h1.bloco-pontilhado-verde + p.bloco-pontilhado-verde,
+.editor-content .ProseMirror h2.bloco-pontilhado-verde + p.bloco-pontilhado-verde,
+.editor-content .ProseMirror h3.bloco-pontilhado-verde + p.bloco-pontilhado-verde,
+.editor-content .ProseMirror h4.bloco-pontilhado-verde + p.bloco-pontilhado-verde,
+.editor-content .ProseMirror h5.bloco-pontilhado-verde + p.bloco-pontilhado-verde,
+.editor-content .ProseMirror h6.bloco-pontilhado-verde + p.bloco-pontilhado-verde {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.editor-content .ProseMirror p.bloco-citacao {
+  border: 2pt dashed #00A86B;
+  background: #EAF5FF;
+  background-color: #EAF5FF;
+  padding: 8px;
+  width: 100%;
+  margin: 18px 0;
+  box-sizing: border-box;
+}
+
+/* Agrupar elementos consecutivos de bloco-citacao */
+.editor-content .ProseMirror p.bloco-citacao + p.bloco-citacao,
+.editor-content .ProseMirror h1.bloco-citacao + h1.bloco-citacao,
+.editor-content .ProseMirror h2.bloco-citacao + h2.bloco-citacao,
+.editor-content .ProseMirror h3.bloco-citacao + h3.bloco-citacao,
+.editor-content .ProseMirror h4.bloco-citacao + h4.bloco-citacao,
+.editor-content .ProseMirror h5.bloco-citacao + h5.bloco-citacao,
+.editor-content .ProseMirror h6.bloco-citacao + h6.bloco-citacao,
+.editor-content .ProseMirror p.bloco-citacao + h1.bloco-citacao,
+.editor-content .ProseMirror p.bloco-citacao + h2.bloco-citacao,
+.editor-content .ProseMirror p.bloco-citacao + h3.bloco-citacao,
+.editor-content .ProseMirror p.bloco-citacao + h4.bloco-citacao,
+.editor-content .ProseMirror p.bloco-citacao + h5.bloco-citacao,
+.editor-content .ProseMirror p.bloco-citacao + h6.bloco-citacao,
+.editor-content .ProseMirror h1.bloco-citacao + p.bloco-citacao,
+.editor-content .ProseMirror h2.bloco-citacao + p.bloco-citacao,
+.editor-content .ProseMirror h3.bloco-citacao + p.bloco-citacao,
+.editor-content .ProseMirror h4.bloco-citacao + p.bloco-citacao,
+.editor-content .ProseMirror h5.bloco-citacao + p.bloco-citacao,
+.editor-content .ProseMirror h6.bloco-citacao + p.bloco-citacao {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+
+.editor-content .ProseMirror p.bloco-atualizacao {
+  background: #fff;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 18px 0;
+}
+
+/* Agrupar elementos consecutivos de bloco-atualizacao */
+.editor-content .ProseMirror p.bloco-atualizacao + p.bloco-atualizacao,
+.editor-content .ProseMirror h1.bloco-atualizacao + h1.bloco-atualizacao,
+.editor-content .ProseMirror h2.bloco-atualizacao + h2.bloco-atualizacao,
+.editor-content .ProseMirror h3.bloco-atualizacao + h3.bloco-atualizacao,
+.editor-content .ProseMirror h4.bloco-atualizacao + h4.bloco-atualizacao,
+.editor-content .ProseMirror h5.bloco-atualizacao + h5.bloco-atualizacao,
+.editor-content .ProseMirror h6.bloco-atualizacao + h6.bloco-atualizacao,
+.editor-content .ProseMirror p.bloco-atualizacao + h1.bloco-atualizacao,
+.editor-content .ProseMirror p.bloco-atualizacao + h2.bloco-atualizacao,
+.editor-content .ProseMirror p.bloco-atualizacao + h3.bloco-atualizacao,
+.editor-content .ProseMirror p.bloco-atualizacao + h4.bloco-atualizacao,
+.editor-content .ProseMirror p.bloco-atualizacao + h5.bloco-atualizacao,
+.editor-content .ProseMirror p.bloco-atualizacao + h6.bloco-atualizacao,
+.editor-content .ProseMirror h1.bloco-atualizacao + p.bloco-atualizacao,
+.editor-content .ProseMirror h2.bloco-atualizacao + p.bloco-atualizacao,
+.editor-content .ProseMirror h3.bloco-atualizacao + p.bloco-atualizacao,
+.editor-content .ProseMirror h4.bloco-atualizacao + p.bloco-atualizacao,
+.editor-content .ProseMirror h5.bloco-atualizacao + p.bloco-atualizacao,
+.editor-content .ProseMirror h6.bloco-atualizacao + p.bloco-atualizacao {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Box Green - Caixa verde pontilhada com fundo verde claro */
+.editor-content .ProseMirror p.box-green {
+  border: 2px dashed #00A86B;
+  background: #E8F5E9;
+  padding: 16px;
+  border-radius: 6px;
+  margin: 18px 0;
+}
+
+/* Classes do conversor-docx (compatibilidade) */
+.editor-content .ProseMirror p.box-highlight {
+  border: 2px dashed #00A86B;
+  background: #fff;
+  padding: 16px;
+  border-radius: 6px;
+  margin: 18px 0;
+}
+
+.editor-content .ProseMirror p.citacao {
+  font-style: italic;
 }
 
 /* ------- ESTILOS APLICÁVEIS (INLINE) ------- */
@@ -286,34 +675,90 @@
   font-weight: 700;
 }
 
+/* Classes mark-blue e mark-yellow do conversor-docx */
+.editor-content .ProseMirror .mark-blue {
+  background: #deeaf6;
+  padding: 2px 3px;
+  border-radius: 2px;
+}
 
+.editor-content .ProseMirror .mark-yellow {
+  background: #ffff00;
+  padding: 2px 3px;
+  border-radius: 2px;
+
+}
+
+.editor-content .ProseMirror .mark-green {
+  background: #c5e0b3;
+  padding: 2px 3px;
+  border-radius: 2px;
+}
+
+.editor-content .ProseMirror .sublinhado-vermelho {
+  text-decoration: underline;
+  font-weight: bold;
+  text-decoration-color: #ff0000;
+  text-decoration-thickness: 2px;
+}
 /* Sidebar */
 .sidebar {
-  width: 260px;
-  background: #fafafa;
+  width: 280px;
+  background: #ffffff;
   border-left: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #fafafa;
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.sidebar-tab:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.sidebar-tab.active {
+  color: #2196f3;
+  border-bottom-color: #2196f3;
+  background-color: #ffffff;
+  font-weight: 500;
+}
+
+.sidebar-content {
+  flex: 1;
   padding: 20px;
   overflow-y: auto;
 }
 
-.sidebar h3 {
-  margin-top: 0;
-  font-size: 18px;
-  font-weight: bold;
-  color: #333;
-}
-
 .style-button {
   width: 100%;
-  margin-bottom: 14px;
-  padding: 10px;
-  border: 1px solid #ccc;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 2px dashed;
   cursor: pointer;
   text-align: left;
   font-size: 14px;
-  border-radius: 6px;
+  border-radius: 4px;
   background: #fff;
   transition: all 0.2s;
+  font-weight: 400;
 }
 
 .style-button:hover {
@@ -326,13 +771,13 @@
 }
 
 /* Representação visual nos botões da sidebar */
-.btn-preview-bloco-verde {
+.btn-preview-bloco-jurisprudencia {
   border: 2px dashed #00A86B;
   padding: 6px;
   background: #fff;
 }
 
-.btn-preview-bloco-azul {
+.btn-preview-citacao {
   border: 2px dashed #00A86B;
   padding: 6px;
   background: #EAF5FF;
@@ -399,20 +844,36 @@
   background-color: #e8f5e9; /* Fundo verde claro */
   padding: 10px;
 }
-.editor-content p.bloco-jurisprudencia {
-  border: 1px dotted #2196f3; /* Borda azul */
-  background-color: #e3f2fd; /* Fundo azul claro */
-  padding: 10px;
+
+/* Agrupar elementos consecutivos de bloco-questao */
+.editor-content p.bloco-questao + p.bloco-questao,
+.editor-content h1.bloco-questao + h1.bloco-questao,
+.editor-content h2.bloco-questao + h2.bloco-questao,
+.editor-content h3.bloco-questao + h3.bloco-questao,
+.editor-content h4.bloco-questao + h4.bloco-questao,
+.editor-content h5.bloco-questao + h5.bloco-questao,
+.editor-content h6.bloco-questao + h6.bloco-questao,
+.editor-content p.bloco-questao + h1.bloco-questao,
+.editor-content p.bloco-questao + h2.bloco-questao,
+.editor-content p.bloco-questao + h3.bloco-questao,
+.editor-content p.bloco-questao + h4.bloco-questao,
+.editor-content p.bloco-questao + h5.bloco-questao,
+.editor-content p.bloco-questao + h6.bloco-questao,
+.editor-content h1.bloco-questao + p.bloco-questao,
+.editor-content h2.bloco-questao + p.bloco-questao,
+.editor-content h3.bloco-questao + p.bloco-questao,
+.editor-content h4.bloco-questao + p.bloco-questao,
+.editor-content h5.bloco-questao + p.bloco-questao,
+.editor-content h6.bloco-questao + p.bloco-questao {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
 }
+
 
 /* Estilos Inline (Marks) */
 .editor-content .texto-novo {
   color: #0000ff; /* Cor azul para inclusão */
-}
-.editor-content .sublinhado-vermelho {
-  text-decoration: underline;
-  text-decoration-color: red; /* Cor do sublinhado */
-  text-decoration-thickness: 2px; /* Opcional: para destacar mais */
 }
 
 /* App.css */
@@ -452,17 +913,213 @@
   color: #333;
 }
 
-.sublinhado-vermelho {
-  text-decoration: underline;
-  text-decoration-color: red;
-  text-decoration-thickness: 2px;
+/* Estilos de Tabela */
+.editor-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
 }
 
-
-.bloco-jurisprudencia {
-  background-color: #e3f2fd; /* Fundo azul claro */
-  padding: 10px;
-  border-left: 4px solid blue;
-  margin: 10px 0;
+.editor-content table td,
+.editor-content table th {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  font-size: 11pt; /* Padronizar células de tabela para 11pt */
 }
+
+.editor-content table thead {
+  background-color: #f5f5f5;
+}
+
+.editor-content table thead th,
+.editor-content table thead td {
+  font-weight: bold;
+  background-color: #f5f5f5;
+}
+
+/* =========================================================================
+   ESTILOS PARA CAPA (COVER PAGE)
+   ========================================================================= */
+
+/* Container da capa - garante que elementos absolutos não empurrem o conteúdo */
+.editor-content .ProseMirror .capa-container,
+.editor-content .ProseMirror [class*="capa"],
+.editor-content .ProseMirror [class*="cover"] {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+/* Barra verde vertical à esquerda */
+.editor-content .ProseMirror .barra-verde,
+.editor-content .ProseMirror [class*="barra-verde"],
+.editor-content .ProseMirror [class*="green-bar"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 60px;
+  background: #4CAF50;
+  z-index: 1;
+  margin: 0;
+  padding: 0;
+}
+
+/* Logo pontoaponto - posicionado no topo */
+.editor-content .ProseMirror .logo-capa,
+.editor-content .ProseMirror [class*="logo-capa"],
+.editor-content .ProseMirror [class*="pontoaponto"] {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* Conteúdo principal da capa - não deve ser empurrado para baixo */
+.editor-content .ProseMirror .capa-content,
+.editor-content .ProseMirror [class*="capa-content"] {
+  position: relative;
+  margin-left: 80px;
+  padding: 20px;
+  z-index: 2;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Seção MATERIAL DE APOIO */
+.editor-content .ProseMirror .material-apoio,
+.editor-content .ProseMirror [class*="material-apoio"],
+.editor-content .ProseMirror [class*="MATERIAL DE APOIO"] {
+  position: relative;
+  margin: 40px 0 0 0;
+  padding: 12px 20px;
+  border: 2px solid #4CAF50;
+  border-radius: 8px;
+  color: #4CAF50;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: inline-block;
+  z-index: 3;
+}
+
+/* Seção ADMINISTRATIVO */
+.editor-content .ProseMirror .administrativo,
+.editor-content .ProseMirror [class*="administrativo"],
+.editor-content .ProseMirror [class*="ADMINISTRATIVO"] {
+  position: relative;
+  margin: 60px 0 0 0;
+  padding-left: 20px;
+  border-left: 4px solid #1e40af;
+  z-index: 3;
+}
+
+.editor-content .ProseMirror .administrativo h1,
+.editor-content .ProseMirror .administrativo h2,
+.editor-content .ProseMirror .administrativo h3 {
+  color: #4CAF50;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0;
+  padding: 0;
+}
+
+.editor-content .ProseMirror .administrativo p {
+  color: #1e40af;
+  margin: 8px 0 0 0;
+  padding: 0;
+}
+
+/* Garantir que elementos da capa não empurrem o conteúdo para baixo */
+.editor-content .ProseMirror > *:first-child.capa-container,
+.editor-content .ProseMirror > *:first-child[class*="capa"] {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* Padrões decorativos - dots */
+.editor-content .ProseMirror .capa-dots,
+.editor-content .ProseMirror [class*="capa-dots"] {
+  position: absolute;
+  z-index: 1;
+  opacity: 0.3;
+}
+
+/* Formas decorativas no canto inferior direito */
+.editor-content .ProseMirror .capa-shapes,
+.editor-content .ProseMirror [class*="capa-shapes"] {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Garantir que parágrafos dentro da capa não tenham margens excessivas */
+.editor-content .ProseMirror .capa-container p,
+.editor-content .ProseMirror [class*="capa"] p {
+  margin: 0;
+  padding: 0;
+}
+
+/* Ajuste para garantir que o primeiro elemento não tenha margin-top */
+.editor-content .ProseMirror > .capa-container:first-child,
+.editor-content .ProseMirror > [class*="capa"]:first-child {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Garantir que elementos absolutos não afetem o fluxo do documento */
+.editor-content .ProseMirror [style*="position: absolute"],
+.editor-content .ProseMirror [style*="position:fixed"],
+.editor-content .ProseMirror [style*="position:absolute"] {
+  margin: 0 !important;
+}
+
+/* Elementos posicionados absolutamente não devem empurrar conteúdo */
+.editor-content .ProseMirror p[style*="position"],
+.editor-content .ProseMirror div[style*="position"],
+.editor-content .ProseMirror span[style*="position"] {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Primeiro parágrafo ou div com position absolute não deve ter margin-top */
+.editor-content .ProseMirror > p:first-child[style*="position"],
+.editor-content .ProseMirror > div:first-child[style*="position"] {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Garantir que elementos com position absolute dentro do primeiro elemento não empurrem o conteúdo */
+.editor-content .ProseMirror > *:first-child [style*="position: absolute"],
+.editor-content .ProseMirror > *:first-child [style*="position:fixed"] {
+  position: absolute !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Tagline "Estudo planejado" */
+.editor-content .ProseMirror .tagline,
+.editor-content .ProseMirror [class*="tagline"],
+.editor-content .ProseMirror [class*="estudo-planejado"] {
+  position: absolute;
+  top: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.9rem;
+  color: #999;
+  font-style: italic;
+  z-index: 10;
+  margin: 0;
+  padding: 0;
+}
+
 }

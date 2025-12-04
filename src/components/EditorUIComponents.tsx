@@ -1,5 +1,4 @@
-import React, { useCallback } from 'react';
-// É necessário importar o tipo Editor do Tiptap para tipagem correta
+import React, { useCallback, useState, useEffect } from 'react';
 import { Editor as TiptapEditor } from '@tiptap/react';
 
 // === HELPER COMPONENTS ===
@@ -13,7 +12,6 @@ interface ButtonProps {
 
 const ToolbarButton: React.FC<ButtonProps> = ({ onClick, isActive, title, children }) => (
   <button
-    // As classes 'toolbar-btn' e 'is-active' são esperadas em seu arquivo CSS (ex: App.css)
     className={`toolbar-btn ${isActive ? 'is-active' : ''}`}
     onClick={onClick}
     title={title}
@@ -27,299 +25,502 @@ const ToolbarButton: React.FC<ButtonProps> = ({ onClick, isActive, title, childr
 interface EditorToolbarProps {
   editor: TiptapEditor;
   handleOpenDocx: () => void;
+  handleOpenDocxViaApi?: () => void;
   handleOpenPdf: () => void;
   handleInsertImage: () => void;
-  handleLink: () => void; // Handler de link dedicado
-  handleInlineCommand: (commandName: string) => void; // Para comandos Tiptap (bold, italic) - não usado diretamente
+  handleLink: () => void;
+  handleInlineCommand: (commandName: string) => void;
 }
 
-// Lista de fontes
 const FONT_OPTIONS = [
-    'Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 
-    'Palatino', 'Garamond', 'Comic Sans MS', 'Trebuchet MS', 'Arial Black', 'Impact'
-];
-
-// Lista de tamanhos
-const SIZE_OPTIONS = [
-    '8px', '9px', '10px', '11px', '12px', '14px', '16px', '18px', '20px', '24px', 
-    '28px', '32px', '36px', '48px', '72px'
+  'Calibri', 'Helvetica', 'Times New Roman', 'Courier New', 'Verdana', 'Georgia', 
+  'Palatino', 'Garamond', 'Comic Sans MS', 'Trebuchet MS', 'Arial Black', 'Impact'
 ];
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({ 
-    editor, 
-    handleOpenDocx,
-    handleOpenPdf,
-    handleInsertImage, 
-    handleLink
+  editor, 
+  handleOpenDocx,
+  handleOpenDocxViaApi,
+  handleOpenPdf,
+  handleInsertImage, 
+  handleLink
 }) => {
+  
+  const toggleFormat = useCallback((markName: string) => 
+    editor.chain().focus().toggleMark(markName).run(), [editor]);
     
-    // Wrapper para toggleMark com useCallback
-    const toggleFormat = useCallback((markName: string) => 
-        editor.chain().focus().toggleMark(markName).run(), [editor]);
-        
-    // Wrapper para toggleHeading com useCallback
-    const setHeading = useCallback((level: number) => 
-        editor.chain().focus().toggleHeading({ level: level as any }).run(), [editor]);
+  const setHeading = useCallback((level: number) => 
+    editor.chain().focus().toggleHeading({ level: level as any }).run(), [editor]);
 
-    return (
+  // Estado para o tamanho da fonte
+  const [currentFontSize, setCurrentFontSize] = React.useState(11);
+
+  // Obter tamanho atual da fonte (do textStyle, não fontSize diretamente)
+  const getCurrentFontSize = useCallback(() => {
+    if (!editor) return 11;
+    try {
+      const textStyleAttrs = editor.getAttributes('textStyle');
+      const fontSize = textStyleAttrs?.fontSize || '11pt';
+      // Extrair número do tamanho (remove 'pt', 'px', etc)
+      const match = fontSize.match(/(\d+)/);
+      return match ? parseInt(match[1]) : 11;
+    } catch {
+      return 11;
+    }
+  }, [editor]);
+
+  // Atualizar tamanho da fonte quando a seleção mudar
+  React.useEffect(() => {
+    if (!editor) return;
+    
+    const updateFontSize = () => {
+      const size = getCurrentFontSize();
+      setCurrentFontSize(size);
+    };
+
+    // Atualizar imediatamente
+    updateFontSize();
+
+    editor.on('selectionUpdate', updateFontSize);
+    editor.on('transaction', updateFontSize);
+
+    return () => {
+      editor.off('selectionUpdate', updateFontSize);
+      editor.off('transaction', updateFontSize);
+    };
+  }, [editor, getCurrentFontSize]);
+
+  const increaseFontSize = useCallback(() => {
+    const newSize = Math.min(currentFontSize + 1, 72);
+    // Se não há seleção, estender a seleção para o próximo caractere ou aplicar ao próximo texto
+    if (editor.state.selection.empty) {
+      // Aplicar ao próximo texto que será digitado
+      editor.chain().focus().setMark('textStyle', { fontSize: `${newSize}pt` }).run();
+    } else {
+      // Aplicar ao texto selecionado
+      editor.chain().focus().setFontSize(`${newSize}pt`).run();
+    }
+    setCurrentFontSize(newSize);
+  }, [editor, currentFontSize]);
+
+  const decreaseFontSize = useCallback(() => {
+    const newSize = Math.max(currentFontSize - 1, 8);
+    // Se não há seleção, estender a seleção para o próximo caractere ou aplicar ao próximo texto
+    if (editor.state.selection.empty) {
+      // Aplicar ao próximo texto que será digitado
+      editor.chain().focus().setMark('textStyle', { fontSize: `${newSize}pt` }).run();
+    } else {
+      // Aplicar ao texto selecionado
+      editor.chain().focus().setFontSize(`${newSize}pt`).run();
+    }
+    setCurrentFontSize(newSize);
+  }, [editor, currentFontSize]);
+
+  // Obter heading atual
+  const getCurrentHeading = () => {
+    for (let i = 1; i <= 6; i++) {
+      if (editor.isActive('heading', { level: i })) {
+        return `H${i}`;
+      }
+    }
+    return 'H1';
+  };
+
+  return (
     <div className="toolbar">
-        {/* Arquivo e Mídia */}
-        <ToolbarButton onClick={handleOpenDocx} isActive={false} title="Abrir arquivo DOCX">📄</ToolbarButton>
-        <ToolbarButton onClick={handleOpenPdf} isActive={false} title="Abrir arquivo PDF">📕</ToolbarButton>
-        <ToolbarButton onClick={handleInsertImage} isActive={false} title="Inserir imagem">🖼️</ToolbarButton>
-        <ToolbarButton onClick={handleLink} isActive={editor.isActive('link')} title="Inserir Link">🔗</ToolbarButton>
-
-        <div className="toolbar-divider" />
-
-        {/* Estilos Inline (Nativo Tiptap) */}
-        <ToolbarButton 
-            onClick={() => toggleFormat('bold')}
-            isActive={editor.isActive('bold')}
-            title="Negrito (Ctrl+B)"
-        >
-            <strong>N</strong>
-        </ToolbarButton>
-        <ToolbarButton 
-            onClick={() => toggleFormat('italic')}
-            isActive={editor.isActive('italic')}
-            title="Itálico (Ctrl+I)"
-        >
-            <em>I</em>
-        </ToolbarButton>
-        <ToolbarButton 
-            onClick={() => toggleFormat('underline')}
-            isActive={editor.isActive('underline')}
-            title="Sublinhado (Ctrl+U)"
-        >
-            <u>S</u>
-        </ToolbarButton>
-        <ToolbarButton 
-            onClick={() => toggleFormat('strike')}
-            isActive={editor.isActive('strike')}
-            title="Riscado"
-        >
-            <s>S</s>
-        </ToolbarButton>
-        <ToolbarButton 
-            onClick={() => toggleFormat('highlight')}
-            isActive={editor.isActive('highlight')}
-            title="Destaque"
-        >
-            🖍️
-        </ToolbarButton>
-        
-        <div className="toolbar-divider" />
-        
-        {/* Headings */}
-        <ToolbarButton 
-            onClick={() => editor.chain().focus().setParagraph().run()}
-            isActive={editor.isActive('paragraph') && !editor.isActive('heading')}
-            title="Parágrafo padrão"
-        >
-            P
-        </ToolbarButton>
-        {[1, 2, 3].map((level) => (
-            <ToolbarButton
-                key={level}
-                onClick={() => setHeading(level)}
-                isActive={editor.isActive('heading', { level })}
-                title={`Título ${level}`}
-            >
-                H{level}
-            </ToolbarButton>
+      {/* Dropdown de Fonte */}
+      <select
+        className="toolbar-select font-select"
+        onChange={(e) => {
+          const font = e.target.value;
+          font === '' 
+            ? editor.chain().focus().unsetFontFamily().run() 
+            : editor.chain().focus().setFontFamily(font).run();
+        }}
+        value={editor.getAttributes('textStyle')?.fontFamily || 'Calibri'}
+        title="Fonte"
+      >
+        {FONT_OPTIONS.map(font => (
+          <option key={font} value={font}>{font}</option>
         ))}
+      </select>
 
-        <div className="toolbar-divider" />
-        
-        {/* Listas */}
+      {/* Tamanho de Fonte com +/- */}
+      <div className="font-size-control">
+        <button 
+          className="toolbar-btn size-btn" 
+          onClick={decreaseFontSize}
+          title="Diminuir tamanho"
+        >
+          −
+        </button>
+        <span className="font-size-display">{currentFontSize}</span>
+        <button 
+          className="toolbar-btn size-btn" 
+          onClick={increaseFontSize}
+          title="Aumentar tamanho"
+        >
+          +
+        </button>
+      </div>
+
+      {/* Dropdown de Estilos de Cabeçalho */}
+      <select
+        className="toolbar-select heading-select"
+        onChange={(e) => {
+          const value = e.target.value;
+          if (value === 'paragraph') {
+            editor.chain().focus().setParagraph().run();
+          } else if (value.startsWith('h')) {
+            const level = parseInt(value.substring(1));
+            setHeading(level);
+          }
+        }}
+        value={editor.isActive('paragraph') ? 'paragraph' : getCurrentHeading().toLowerCase()}
+        title="Estilo de cabeçalho"
+      >
+        <option value="paragraph">Parágrafo</option>
+        <option value="h1">H1</option>
+        <option value="h2">H2</option>
+        <option value="h3">H3</option>
+        <option value="h4">H4</option>
+        <option value="h5">H5</option>
+        <option value="h6">H6</option>
+      </select>
+
+      <div className="toolbar-divider" />
+
+      {/* Botões de Formatação: B, I, U, S */}
+      <ToolbarButton 
+        onClick={() => toggleFormat('bold')}
+        isActive={editor.isActive('bold')}
+        title="Negrito (Ctrl+B)"
+      >
+        <strong>B</strong>
+      </ToolbarButton>
+      <ToolbarButton 
+        onClick={() => toggleFormat('italic')}
+        isActive={editor.isActive('italic')}
+        title="Itálico (Ctrl+I)"
+      >
+        <em>I</em>
+      </ToolbarButton>
+      <ToolbarButton 
+        onClick={() => toggleFormat('underline')}
+        isActive={editor.isActive('underline')}
+        title="Sublinhado (Ctrl+U)"
+      >
+        <u>U</u>
+      </ToolbarButton>
+      <ToolbarButton 
+        onClick={() => toggleFormat('strike')}
+        isActive={editor.isActive('strike')}
+        title="Riscado"
+      >
+        <s>S</s>
+      </ToolbarButton>
+
+      <div className="toolbar-divider" />
+
+      {/* Seletor de Cor de Texto */}
+      <input
+        type="color"
+        className="toolbar-color-picker"
+        onChange={(e) => {
+          editor.chain().focus().setColor(e.target.value).run();
+        }}
+        value={editor.getAttributes('textStyle')?.color || '#000000'}
+        title="Cor do texto"
+      />
+
+      <div className="toolbar-divider" />
+
+      {/* Alinhamento */}
+      {['left', 'center', 'right', 'justify'].map((align) => (
         <ToolbarButton
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            isActive={editor.isActive('bulletList')}
-            title="Lista com marcadores"
+          key={align}
+          onClick={() => editor.chain().focus().setTextAlign(align as any).run()}
+          isActive={editor.isActive({ textAlign: align })}
+          title={
+            align === 'left' ? 'Alinhar à esquerda' :
+            align === 'center' ? 'Centralizar' :
+            align === 'right' ? 'Alinhar à direita' :
+            'Justificar'
+          }
         >
-            •
+          {
+            align === 'left' ? '⬅' :
+            align === 'center' ? '⬌' :
+            align === 'right' ? '➡' :
+            '⬌⬌'
+          }
         </ToolbarButton>
+      ))}
 
-        <ToolbarButton
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-            isActive={editor.isActive('orderedList')}
-            title="Lista numerada"
+      <div className="toolbar-divider" />
+
+      {/* Listas */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBulletList().run()}
+        isActive={editor.isActive('bulletList')}
+        title="Lista com marcadores"
+      >
+        •
+      </ToolbarButton>
+
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        isActive={editor.isActive('orderedList')}
+        title="Lista numerada"
+      >
+        1.
+      </ToolbarButton>
+
+      <div className="toolbar-divider" />
+
+      {/* Upload de Arquivos */}
+      {handleOpenDocxViaApi && (
+        <ToolbarButton 
+          onClick={handleOpenDocxViaApi} 
+          isActive={false} 
+          title="Importar DOCX via API (convert-docx-html)"
         >
-            1.
+          📄
         </ToolbarButton>
-        
-        <div className="toolbar-divider" />
-        
-        {/* Alinhamento */}
-        {['left', 'center', 'right', 'justify'].map((align) => (
-            <ToolbarButton
-                key={align}
-                onClick={() => editor.chain().focus().setTextAlign(align as any).run()}
-                isActive={editor.isActive({ textAlign: align })}
-                title={
-                    align === 'left' ? 'Alinhar à esquerda' :
-                    align === 'center' ? 'Centralizar' :
-                    align === 'right' ? 'Alinhar à direita' :
-                    'Justificar'
-                }
-            >
-                {
-                    align === 'left' ? '⬅' :
-                    align === 'center' ? '⬌' :
-                    align === 'right' ? '➡' :
-                    '⬌⬌'
-                }
-            </ToolbarButton>
-        ))}
+      )}
 
-        <div className="toolbar-divider" />
-        
-        {/* Fonte e Tamanho */}
-        <select
-            className="toolbar-select"
-            onChange={(e) => {
-                const font = e.target.value;
-                font === '' 
-                    ? editor.chain().focus().unsetFontFamily().run() 
-                    : editor.chain().focus().setFontFamily(font).run();
-            }}
-            value={editor.getAttributes('textStyle')?.fontFamily || ''}
-            title="Fonte"
-        >
-            <option value="">Fonte</option>
-            {FONT_OPTIONS.map(font => (
-                <option key={font} value={font}>{font}</option>
-            ))}
-        </select>
+      {/* Link, Imagem, Tabela */}
+      <ToolbarButton onClick={handleLink} isActive={editor.isActive('link')} title="Inserir Link">
+        🔗
+      </ToolbarButton>
+      <ToolbarButton onClick={handleInsertImage} isActive={false} title="Inserir imagem">
+        🖼️
+      </ToolbarButton>
+      <ToolbarButton onClick={() => {}} isActive={false} title="Inserir tabela">
+        ⧉
+      </ToolbarButton>
 
-        <select
-            className="toolbar-select"
-            onChange={(e) => {
-                const size = e.target.value;
-                if (size === '') {
-                    if (editor.isActive('fontSize')) {
-                        editor.chain().focus().unsetFontSize().run();
-                    }
-                } else {
-                    editor.chain().focus().setFontSize(size).run();
-                }
-            }}
-            value={editor.getAttributes('fontSize')?.fontSize || ''} 
-            title="Tamanho da fonte"
-        >
-            <option value="">Tamanho</option>
-            {SIZE_OPTIONS.map(size => (
-                <option key={size} value={size}>{size}</option>
-            ))}
-        </select>
-        
+      <div className="toolbar-divider" />
+
+      {/* Desfazer/Refazer */}
+      <ToolbarButton
+        onClick={() => editor.chain().focus().undo().run()}
+        isActive={false}
+        title="Desfazer (Ctrl+Z)"
+      >
+        ↶
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().redo().run()}
+        isActive={false}
+        title="Refazer (Ctrl+Y)"
+      >
+        ↷
+      </ToolbarButton>
     </div>
-    );
+  );
 };
-
 
 // === EDITOR SIDEBAR ===
 
 interface EditorSidebarProps {
-    editor: TiptapEditor;
-    handleBlockStyle: (className: string) => void;
-    applyCustomInlineStyle: (markName: string) => void;
+  editor: TiptapEditor;
+  handleBlockStyle: (className: string) => void;
+  applyCustomInlineStyle: (markName: string) => void;
 }
 
-const BLOCK_STYLES = [
-    { className: 'bloco-verde', label: 'Bloco Verde Tracejado', title: 'Aplicar bloco verde tracejado' },
-    { className: 'bloco-azul', label: 'Bloco Azul Claro', title: 'Aplicar bloco azul claro' },
-    { className: 'bloco-neutro', label: 'Bloco Neutro', title: 'Aplicar bloco neutro' },
-];
-
-const INLINE_STYLES = [
-    { markName: 'textoAmarelo', label: 'Texto Amarelo' },
-    { markName: 'textoVerde', label: 'Texto Verde' },
-    { markName: 'negritoCustom', label: 'Negrito Custom' },
+// Estilos mapeados pelo conversor-docx - baseados nos estilos do App.css
+const STYLE_BUTTONS = [
+  // Blocos (parágrafos)
+  { 
+    markName: 'markYellow', 
+    label: 'Marca Amarela', 
+    textColor: '#000000',
+    backgroundColor: '#ffff00',
+    type: 'inline' as const
+  },
+  { 
+    markName: 'markGreen', 
+    label: 'Marca Verde', 
+    textColor: '#000000',
+    backgroundColor: '#c5e0b3',
+    type: 'inline' as const
+  },
+  { 
+    markName: 'markBlue', 
+    label: 'Marca Azul', 
+    border: 'none',
+    borderColor: 'transparent',
+    backgroundColor: '#E3F2FD',
+    type: 'inline' as const
+  },
+  { 
+    className: 'bloco-jurisprudencia', 
+    label: 'Caixa verde pontilhada', 
+    border: '2pt dashed',
+    borderColor: '#00A86B',
+    backgroundColor: '#e2efd9',
+    type: 'block' as const
+  },
+  { 
+    className: 'citacao', 
+    label: 'Caixa azul pontilhada', 
+    border: '2pt dashed',
+    borderColor: '#00A86B',
+    backgroundColor: '#EAF5FF',
+    type: 'block' as const
+  },
+  { 
+    className: 'bloco-pontilhado-verde', 
+    label: 'Pontilhado verde', 
+    border: '2pt dashed',
+    borderColor: '#00A86B',
+    backgroundColor: 'transparent',
+    type: 'block' as const
+  },
+  { 
+    markName: 'sublinhadoVermelho', 
+    label: 'Grifado Vermelho', 
+    textColor: '#000000',
+    textDecoration: 'underline',
+    textDecorationColor: 'red',
+    textDecorationThickness: '2px',
+    backgroundColor: '#fff',
+    border: 'none',
+    type: 'inline' as const
+  },
 ];
 
 export const EditorSidebar: React.FC<EditorSidebarProps> = ({ 
-    editor, 
-    handleBlockStyle, 
-    applyCustomInlineStyle
+  editor, 
+  handleBlockStyle, 
+  applyCustomInlineStyle
 }) => {
-    
-    // 1. HELPER: Checa se a classe de bloco customizado está ativa
-    const isBlockStyleActive = useCallback((className: string) => {
-        if (!editor || !editor.state) return false;
-        
-        try {
-            // Obter os atributos do nó de parágrafo pai da seleção
-            const currentAttrs = editor.getAttributes('paragraph');
-            // Checa se a classe customizada existe
-            return (currentAttrs?.class || '').includes(className);
-        } catch (error) {
-            return false;
-        }
-    }, [editor]);
-    
-    // 2. HANDLER: Função que aplica OU REMOVE a classe de bloco customizado
-    const handleBlockStyleToggle = (className: string) => {
-        // Se o estilo *já* estiver ativo, chamamos `handleBlockStyle('')` para remover TUDO (retornar ao padrão).
-        // Se você quisesse a remoção individual de uma única classe, a lógica em `updateParagraphClassCommand` precisaria de uma checagem adicional.
-        // A nossa `updateParagraphClassCommand` é projetada para remover todos os 'bloco-*' antes de adicionar o novo.
-        
-        if (isBlockStyleActive(className)) {
-             // Se já está ativo, passamos uma string vazia para remover TODOS os blocos
-             handleBlockStyle(''); 
-        } else {
-             // Caso contrário, aplica o novo bloco (que implicitamente remove outros blocos por `updateParagraphClassCommand`)
-             handleBlockStyle(className); 
-        }
-    };
-    
-    // O botão 'Parágrafo Padrão' permanece como remoção forçada
-    const handleRemoveBlockStyle = () => handleBlockStyle('');
+  const [activeTab, setActiveTab] = useState<'estilos' | 'notas' | 'ancoras' | 'alteracoes'>('estilos');
+  
+  const isBlockStyleActive = useCallback((className: string) => {
+    if (!editor || !editor.state) return false;
+    try {
+      // Verifica primeiro se está em um heading
+      if (editor.isActive('heading')) {
+        const headingAttrs = editor.getAttributes('heading');
+        const classes = (headingAttrs?.class || '').split(' ').filter((c: string) => c);
+        return classes.includes(className);
+      }
+      // Se não estiver em heading, verifica parágrafo
+      const currentAttrs = editor.getAttributes('paragraph');
+      const classes = (currentAttrs?.class || '').split(' ').filter((c: string) => c);
+      return classes.includes(className);
+    } catch (error) {
+      return false;
+    }
+  }, [editor]);
+  
+  const handleBlockStyleToggle = (className: string) => {
+    if (isBlockStyleActive(className)) {
+      handleBlockStyle(''); 
+    } else {
+      handleBlockStyle(className); 
+    }
+  };
 
-    // O applyCustomInlineStyle já usa editor.chain().focus().toggleMark(markName).run() no Editor.tsx, 
-    // então a lógica de toggle já está implementada para as marcas inline!
+  return (
+    <div className="sidebar"> 
+      {/* Abas */}
+      <div className="sidebar-tabs">
+        <button 
+          className={`sidebar-tab ${activeTab === 'estilos' ? 'active' : ''}`}
+          onClick={() => setActiveTab('estilos')}
+        >
+          Estilos
+        </button>
+        <button 
+          className={`sidebar-tab ${activeTab === 'notas' ? 'active' : ''}`}
+          onClick={() => setActiveTab('notas')}
+        >
+          Notas
+        </button>
+        <button 
+          className={`sidebar-tab ${activeTab === 'ancoras' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ancoras')}
+        >
+          Âncoras
+        </button>
+        <button 
+          className={`sidebar-tab ${activeTab === 'alteracoes' ? 'active' : ''}`}
+          onClick={() => setActiveTab('alteracoes')}
+        >
+          Alterações
+        </button>
+      </div>
 
-    return (
-        <div className="sidebar"> 
-          <h3>Estilos</h3>
-
-          {/* ESTILOS DE BLOCO (Agora com Toggle) */}
-          {BLOCK_STYLES.map(({ className, label, title }) => (
-            <button
-                key={className}
-                className={`style-button btn-preview-${className} ${isBlockStyleActive(className) ? 'is-active' : ''}`}
-                // Usa o novo toggle handler
-                onClick={() => handleBlockStyleToggle(className)} 
-                title={title}
-            >
-                {label}
-            </button>
-          ))}
-          
-            {/* BOTÃO PARA REMOVER TODOS ESTILOS DE BLOCO */}
-            <button
-                className="style-button btn-preview-remove-bloco"
-                onClick={handleRemoveBlockStyle}
-                title="Voltar para Parágrafo Padrão (Remove qualquer bloco)"
-                style={{ marginTop: '0.5rem', marginBottom: '1rem', opacity: 0.8 }}
-            >
-                Parágrafo Padrão
-            </button>
-
-
-            {/* ESTILOS INLINE CUSTOMIZADOS (Já com Toggle em applyCustomInlineStyle) */}
-            {INLINE_STYLES.map(({ markName, label }) => (
+      {/* Conteúdo das Abas */}
+      {activeTab === 'estilos' && (
+        <div className="sidebar-content">
+          {STYLE_BUTTONS.map((style, index) => {
+            if (style.type === 'block') {
+              const isActive = isBlockStyleActive(style.className);
+              return (
                 <button
-                    key={markName}
-                    // A checagem `editor.isActive(markName)` faz a classe `is-active` alternar automaticamente.
-                    className={`style-button btn-preview-${markName} ${editor.isActive(markName) ? 'is-active' : ''}`} 
-                    // Chama a função que já usa toggleMark do Tiptap (implementado em Editor.tsx)
-                    onClick={() => applyCustomInlineStyle(markName)} 
-                    title={`Aplicar/Remover ${label.toLowerCase()}`}
+                  key={index}
+                  className={`style-button ${isActive ? 'is-active' : ''}`}
+                  onClick={() => handleBlockStyleToggle(style.className)}
+                  style={{
+                    border: style.border === 'none' ? 'none' : `${style.border} ${style.borderColor}`,
+                    backgroundColor: style.backgroundColor || '#fff',
+                    color: style.textColor || '#333',
+                    padding: '12px',
+                    borderRadius: '4px',
+                  }}
+                  title={`Aplicar ${style.label}`}
                 >
-                    {label}
+                  {style.label}
                 </button>
-            ))}
+              );
+            } else {
+              const isActive = editor.isActive(style.markName);
+              return (
+                <button
+                  key={index}
+                  className={`style-button ${isActive ? 'is-active' : ''}`}
+                  onClick={() => applyCustomInlineStyle(style.markName)}
+                  style={{
+                    color: style.textColor || '#000',
+                    backgroundColor: style.backgroundColor || '#fff',
+                    border: '1px solid #ddd',
+                    padding: '12px',
+                    borderRadius: '2px',
+                    textDecoration: style.textDecoration || 'none',
+                    textDecorationColor: style.textDecorationColor || 'transparent',
+                    textDecorationThickness: style.textDecorationThickness || '0px',
+                  }}
+                  title={`Aplicar ${style.label}`}
+                >
+                  {style.label}
+                </button>
+              );
+            }
+          })}
         </div>
-    );
+      )}
+
+      {activeTab === 'notas' && (
+        <div className="sidebar-content">
+          <p>Funcionalidade de Notas em desenvolvimento...</p>
+        </div>
+      )}
+
+      {activeTab === 'ancoras' && (
+        <div className="sidebar-content">
+          <p>Funcionalidade de Âncoras em desenvolvimento...</p>
+        </div>
+      )}
+
+      {activeTab === 'alteracoes' && (
+        <div className="sidebar-content">
+          <p>Funcionalidade de Alterações em desenvolvimento...</p>
+        </div>
+      )}
+    </div>
+  );
 };

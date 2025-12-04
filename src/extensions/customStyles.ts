@@ -74,3 +74,55 @@ export const NegritoCustom = Mark.create({
     return ['span', HTMLAttributes, 0];
   },
 });
+
+// Extensão para Destaque 1 (texto vermelho)
+export const Destaque1 = Mark.create({
+  name: 'destaque1',
+  addAttributes() {
+    return {
+      style: {
+        default: 'color: #FF0000;',
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'span',
+        getAttrs: (node) => {
+          const element = node as HTMLElement;
+          return element.style.color === 'rgb(255, 0, 0)' || element.style.color === '#FF0000' || element.style.color === '#ff0000' ? null : false;
+        },
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', { ...HTMLAttributes, style: 'color: #FF0000;' }, 0];
+  },
+});
+
+// Extensão para Destaque 2 (texto laranja)
+export const Destaque2 = Mark.create({
+  name: 'destaque2',
+  addAttributes() {
+    return {
+      style: {
+        default: 'color: #FF8C00;',
+      },
+    };
+  },
+  parseHTML() {
+    return [
+      {
+        tag: 'span',
+        getAttrs: (node) => {
+          const element = node as HTMLElement;
+          return element.style.color === 'rgb(255, 140, 0)' || element.style.color === '#FF8C00' || element.style.color === '#ff8c00' ? null : false;
+        },
+      },
+    ];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', { ...HTMLAttributes, style: 'color: #FF8C00;' }, 0];
+  },
+});

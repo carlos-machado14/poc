@@ -1,5 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getAllFiles, createFile, deleteFile, saveFile, File } from '../db';
+import DashboardHeader from './DashboardHeader';
+import DashboardSidebar from './DashboardSidebar';
+import ApostilaCard, { ApostilaStatus } from './ApostilaCard';
+import Pagination from './Pagination';
+import FiltersButton from './FiltersButton';
 import './FileManager.css';
 
 interface FileManagerProps {
@@ -7,13 +12,18 @@ interface FileManagerProps {
   onBack: () => void;
 }
 
+type GradientType = 'orange' | 'purple' | 'green' | 'blue';
+
 const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newFileName, setNewFileName] = useState('');
-  const [editingFileId, setEditingFileId] = useState<string | null>(null);
-  const [editingFileName, setEditingFileName] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [filtersActive, setFiltersActive] = useState(false);
+  const itemsPerPage = 6;
 
   useEffect(() => {
     loadFiles();
@@ -23,7 +33,6 @@ const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
     setIsLoading(true);
     try {
       const allFiles = await getAllFiles();
-      // Ordenar por data de atualização (mais recentes primeiro)
       allFiles.sort((a, b) => b.updatedAt - a.updatedAt);
       setFiles(allFiles);
     } catch (error) {
@@ -44,7 +53,6 @@ const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
       setFiles(prev => [file, ...prev]);
       setShowCreateModal(false);
       setNewFileName('');
-      // Abrir o arquivo recém-criado
       onSelectFile(file.id);
     } catch (error) {
       console.error('Erro ao criar arquivo:', error);
@@ -52,10 +60,8 @@ const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
     }
   };
 
-  const handleDeleteFile = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    if (!window.confirm('Tem certeza que deseja excluir este arquivo?')) {
+  const handleDeleteFile = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta apostila?')) {
       return;
     }
 
@@ -68,179 +74,172 @@ const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
     }
   };
 
-  const handleStartEdit = (file: File, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingFileId(file.id);
-    setEditingFileName(file.name);
-  };
-
-  const handleSaveEdit = async (id: string) => {
-    if (!editingFileName.trim()) {
-      alert('O nome do arquivo não pode estar vazio');
-      return;
-    }
-
-    try {
-      const file = files.find(f => f.id === id);
-      if (!file) return;
-
-      const updatedFile = { ...file, name: editingFileName.trim() };
-      await saveFile(updatedFile);
-      setFiles(prev => prev.map(f => f.id === id ? updatedFile : f));
-      setEditingFileId(null);
-      setEditingFileName('');
-    } catch (error) {
-      console.error('Erro ao renomear arquivo:', error);
-      alert('Erro ao renomear arquivo');
+  const handleEditFile = (id: string) => {
+    const file = files.find(f => f.id === id);
+    if (file) {
+      const newName = prompt('Digite o novo nome:', file.name);
+      if (newName && newName.trim()) {
+        const updatedFile = { ...file, name: newName.trim() };
+        saveFile(updatedFile).then(() => {
+          setFiles(prev => prev.map(f => f.id === id ? updatedFile : f));
+        }).catch(error => {
+          console.error('Erro ao renomear arquivo:', error);
+          alert('Erro ao renomear arquivo');
+        });
+      }
     }
   };
 
-  const handleCancelEdit = () => {
-    setEditingFileId(null);
-    setEditingFileName('');
+  // Função para determinar status baseado no conteúdo/nome do arquivo
+  const getFileStatus = (file: File): ApostilaStatus[] => {
+    const statuses: ApostilaStatus[] = [];
+    const name = file.name.toLowerCase();
+    const content = file.content.toLowerCase();
+
+    // Lógica para determinar status (pode ser melhorada)
+    if (name.includes('material') || name.includes('apoio')) {
+      statuses.push('Material de apoio');
+    } else if (name.includes('plano') || name.includes('estudo')) {
+      statuses.push('Plano de estudo');
+    } else {
+      statuses.push('Apostila');
+    }
+
+    // Adicionar status de publicação baseado em conteúdo
+    if (content.length > 100) {
+      statuses.push('Publicado');
+    } else {
+      statuses.push('Rascunho');
+    }
+
+    return statuses;
   };
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  // Função para determinar gradiente baseado no índice
+  const getGradient = (index: number): GradientType => {
+    const gradients: GradientType[] = ['orange', 'purple', 'green', 'blue'];
+    return gradients[index % gradients.length];
   };
 
-  const getPreview = (content: string) => {
-    // Remover tags HTML e pegar primeiros 100 caracteres
-    const text = content.replace(/<[^>]*>/g, '').trim();
-    return text.length > 100 ? text.substring(0, 100) + '...' : text || 'Documento vazio';
-  };
+  // Filtrar arquivos baseado na busca
+  const filteredFiles = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return files;
+    }
+    const query = searchQuery.toLowerCase();
+    return files.filter(file => 
+      file.name.toLowerCase().includes(query) ||
+      file.content.toLowerCase().includes(query)
+    );
+  }, [files, searchQuery]);
+
+  // Paginação
+  const totalPages = Math.ceil(filteredFiles.length / itemsPerPage);
+  const paginatedFiles = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredFiles.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredFiles, currentPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   if (isLoading) {
     return (
       <div className="file-manager-container">
-        <div className="file-manager-loading">Carregando arquivos...</div>
+        <div className="file-manager-loading">Carregando apostilas...</div>
       </div>
     );
   }
 
   return (
     <div className="file-manager-container">
-      <header className="file-manager-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button onClick={onBack} className="back-button" title="Voltar">← Voltar</button>
-          <h1>📁 Gerenciador de Arquivos</h1>
-        </div>
-        <button 
-          className="create-file-button"
-          onClick={() => setShowCreateModal(true)}
-        >
-          + Novo Arquivo
-        </button>
-      </header>
-
-      <div className="file-manager-content">
-        {files.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">📄</div>
-            <h2>Nenhum arquivo encontrado</h2>
-            <p>Crie seu primeiro arquivo para começar</p>
-            <button 
-              className="create-file-button"
-              onClick={() => setShowCreateModal(true)}
-            >
-              + Criar Primeiro Arquivo
-            </button>
-          </div>
-        ) : (
-          <div className="files-grid">
-            {files.map(file => (
-              <div
-                key={file.id}
-                className="file-card"
-                onClick={() => onSelectFile(file.id)}
+      <DashboardSidebar
+        currentPage="gestao-apostilas"
+        isCollapsed={sidebarCollapsed}
+      />
+      <div className="file-manager-main">
+        <DashboardHeader
+          userName="Natalia"
+          onSearch={setSearchQuery}
+          onLogout={onBack}
+          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+        
+        <div className="file-manager-content">
+          <div className="content-header">
+            <h1 className="content-title">Gestão de apostilas</h1>
+            <div className="content-actions">
+              <FiltersButton
+                active={filtersActive}
+                onClick={() => setFiltersActive(!filtersActive)}
+              />
+              <button
+                className="create-file-button"
+                onClick={() => setShowCreateModal(true)}
               >
-                <div className="file-card-header">
-                  {editingFileId === file.id ? (
-                    <div className="file-edit-form">
-                      <input
-                        type="text"
-                        value={editingFileName}
-                        onChange={(e) => setEditingFileName(e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            handleSaveEdit(file.id);
-                          } else if (e.key === 'Escape') {
-                            handleCancelEdit();
-                          }
-                        }}
-                        className="file-edit-input"
-                        autoFocus
-                      />
-                      <div className="file-edit-actions">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSaveEdit(file.id);
-                          }}
-                          className="file-edit-save"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCancelEdit();
-                          }}
-                          className="file-edit-cancel"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <h3 className="file-name">{file.name}</h3>
-                      <div className="file-actions">
-                        <button
-                          onClick={(e) => handleStartEdit(file, e)}
-                          className="file-action-btn"
-                          title="Renomear"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteFile(file.id, e)}
-                          className="file-action-btn file-delete-btn"
-                          title="Excluir"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-                <p className="file-preview">{getPreview(file.content)}</p>
-                <div className="file-meta">
-                  <span className="file-date">
-                    Atualizado: {formatDate(file.updatedAt)}
-                  </span>
-                </div>
-              </div>
-            ))}
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M10 4V16M4 10H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <span>+ Novo</span>
+              </button>
+            </div>
           </div>
-        )}
+
+          {filteredFiles.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">📄</div>
+              <h2>Nenhuma apostila encontrada</h2>
+              <p>Crie sua primeira apostila para começar</p>
+              <button
+                className="create-file-button"
+                onClick={() => setShowCreateModal(true)}
+              >
+                + Criar Primeira Apostila
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="files-grid">
+                {paginatedFiles.map((file, index) => {
+                  const globalIndex = files.findIndex(f => f.id === file.id);
+                  return (
+                    <ApostilaCard
+                      key={file.id}
+                      id={file.id}
+                      title={file.name}
+                      status={getFileStatus(file)}
+                      updatedAt={file.updatedAt}
+                      gradient={getGradient(globalIndex)}
+                      onSelect={onSelectFile}
+                      onDelete={handleDeleteFile}
+                      onEdit={handleEditFile}
+                    />
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Criar Novo Arquivo</h2>
+            <h2>Criar Nova Apostila</h2>
             <input
               type="text"
-              placeholder="Nome do arquivo"
+              placeholder="Nome da apostila"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
               onKeyDown={(e) => {
@@ -279,4 +278,3 @@ const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
 };
 
 export default FileManager;
-
