@@ -1,14 +1,22 @@
 import React from 'react';
+import Menu from './Menu';
 import './Home.css';
 
 interface HomeProps {
   onSelectEditor: () => void;
   onSelectViewer: () => void;
+  onNavigate?: (page: 'inicio' | 'gestao-apostilas' | 'atualizacoes') => void;
+  menuCurrentPage?: 'inicio' | 'gestao-apostilas' | 'atualizacoes';
 }
 
-const Home: React.FC<HomeProps> = ({ onSelectEditor, onSelectViewer }) => {
+const Home: React.FC<HomeProps> = ({ onSelectEditor, onSelectViewer, onNavigate, menuCurrentPage = 'inicio' }) => {
   return (
     <div className="home-container">
+      <Menu
+        currentPage={menuCurrentPage}
+        onNavigate={onNavigate}
+      />
+      <div className="home-content">
       <div className="home-header">
         <h1>📚 Sistema de Documentos</h1>
         <p>Escolha o modo de trabalho</p>
@@ -38,6 +46,7 @@ const Home: React.FC<HomeProps> = ({ onSelectEditor, onSelectViewer }) => {
             <li>Anotações pessoais</li>
           </ul>
         </div>
+      </div>
       </div>
     </div>
   );

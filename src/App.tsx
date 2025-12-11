@@ -79,18 +79,52 @@ const App: React.FC = () => {
     }
   };
 
+  const handleMenuNavigate = (page: 'inicio' | 'gestao-apostilas' | 'atualizacoes') => {
+    if (page === 'inicio') {
+      setCurrentView('home');
+      setSelectedFileId(undefined);
+      setMode(null);
+    } else if (page === 'gestao-apostilas') {
+      setCurrentView('fileManager');
+      // Se não tiver modo definido, definir como editor por padrão
+      if (!mode) {
+        setMode('editor');
+      }
+    } else if (page === 'atualizacoes') {
+      // Por enquanto, também vai para fileManager
+      // Você pode criar uma página específica para atualizações depois
+      setCurrentView('fileManager');
+      if (!mode) {
+        setMode('editor');
+      }
+    }
+  };
+
+  const getCurrentPage = (): 'inicio' | 'gestao-apostilas' | 'atualizacoes' => {
+    if (currentView === 'home') {
+      return 'inicio';
+    } else if (currentView === 'fileManager' || currentView === 'editor' || currentView === 'viewer') {
+      return 'gestao-apostilas';
+    }
+    return 'inicio';
+  };
+
   return (
     <>
       {currentView === 'home' && (
         <Home
           onSelectEditor={handleSelectEditor}
           onSelectViewer={handleSelectViewer}
+          onNavigate={handleMenuNavigate}
+          menuCurrentPage={getCurrentPage()}
         />
       )}
       {currentView === 'fileManager' && (
         <FileManager
           onSelectFile={handleSelectFile}
           onBack={handleBack}
+          onNavigate={handleMenuNavigate}
+          menuCurrentPage={getCurrentPage()}
         />
       )}
       {currentView === 'editor' && (

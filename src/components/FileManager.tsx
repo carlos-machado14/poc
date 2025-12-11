@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { getAllFiles, createFile, deleteFile, saveFile, File } from '../db';
 import DashboardHeader from './DashboardHeader';
-import DashboardSidebar from './DashboardSidebar';
+import Menu from './Menu';
 import ApostilaCard, { ApostilaStatus } from './ApostilaCard';
 import Pagination from './Pagination';
 import FiltersButton from './FiltersButton';
@@ -10,11 +10,13 @@ import './FileManager.css';
 interface FileManagerProps {
   onSelectFile: (fileId: string) => void;
   onBack: () => void;
+  onNavigate?: (page: 'inicio' | 'gestao-apostilas' | 'atualizacoes') => void;
+  menuCurrentPage?: 'inicio' | 'gestao-apostilas' | 'atualizacoes';
 }
 
 type GradientType = 'orange' | 'purple' | 'green' | 'blue';
 
-const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
+const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack, onNavigate, menuCurrentPage = 'gestao-apostilas' }) => {
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -156,123 +158,38 @@ const FileManager: React.FC<FileManagerProps> = ({ onSelectFile, onBack }) => {
 
   return (
     <div className="file-manager-container">
-      <DashboardSidebar
-        currentPage="gestao-apostilas"
-        isCollapsed={sidebarCollapsed}
+      <Menu
+        currentPage={menuCurrentPage}
+        onNavigate={onNavigate}
       />
+
       <div className="file-manager-main">
-        <DashboardHeader
-          userName="Natalia"
-          onSearch={setSearchQuery}
-          onLogout={onBack}
-          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-        
         <div className="file-manager-content">
-          <div className="content-header">
-            <h1 className="content-title">Gestão de apostilas</h1>
-            <div className="content-actions">
-              <FiltersButton
-                active={filtersActive}
-                onClick={() => setFiltersActive(!filtersActive)}
+          <div className="files-grid">
+            {paginatedFiles.map((file) => (
+              <ApostilaCard
+                key={file.id}
+                id={file.id}
+                title={file.name}
+                status={getFileStatus(file)}
+                updatedAt={file.updatedAt}
+                gradient={getGradient(files.indexOf(file))}
+                onSelect={onSelectFile}
+                onDelete={handleDeleteFile}
+                onEdit={handleEditFile}
               />
-              <button
-                className="create-file-button"
-                onClick={() => setShowCreateModal(true)}
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 4V16M4 10H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                <span>+ Novo</span>
-              </button>
-            </div>
+            ))}
           </div>
-
-          {filteredFiles.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-icon">📄</div>
-              <h2>Nenhuma apostila encontrada</h2>
-              <p>Crie sua primeira apostila para começar</p>
-              <button
-                className="create-file-button"
-                onClick={() => setShowCreateModal(true)}
-              >
-                + Criar Primeira Apostila
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="files-grid">
-                {paginatedFiles.map((file, index) => {
-                  const globalIndex = files.findIndex(f => f.id === file.id);
-                  return (
-                    <ApostilaCard
-                      key={file.id}
-                      id={file.id}
-                      title={file.name}
-                      status={getFileStatus(file)}
-                      updatedAt={file.updatedAt}
-                      gradient={getGradient(globalIndex)}
-                      onSelect={onSelectFile}
-                      onDelete={handleDeleteFile}
-                      onEdit={handleEditFile}
-                    />
-                  );
-                })}
-              </div>
-
-              {totalPages > 1 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
-              )}
-            </>
-          )}
         </div>
       </div>
 
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Criar Nova Apostila</h2>
-            <input
-              type="text"
-              placeholder="Nome da apostila"
-              value={newFileName}
-              onChange={(e) => setNewFileName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleCreateFile();
-                } else if (e.key === 'Escape') {
-                  setShowCreateModal(false);
-                  setNewFileName('');
-                }
-              }}
-              className="modal-input"
-              autoFocus
-            />
-            <div className="modal-actions">
-              <button
-                onClick={handleCreateFile}
-                className="modal-btn modal-btn-primary"
-              >
-                Criar
-              </button>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setNewFileName('');
-                }}
-                className="modal-btn modal-btn-secondary"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="file-manager-footer">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
     </div>
   );
 };

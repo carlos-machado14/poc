@@ -391,12 +391,225 @@ const STYLE_BUTTONS = [
   },
 ];
 
+// Interface para itens do índice
+interface TableOfContentsItem {
+  id: string;
+  level: number;
+  text: string;
+  pos: number;
+}
+
+// Função para extrair cabeçalhos do editor
+const extractHeadings = (editor: TiptapEditor): TableOfContentsItem[] => {
+  const headings: TableOfContentsItem[] = [];
+  
+  if (!editor) {
+    return headings;
+  }
+  
+  try {
+    // Verifica se o editor tem state e doc
+    if (!editor.state || !editor.state.doc) {
+      return headings;
+    }
+    
+    // Percorre todos os nós do documento usando forEach
+    editor.state.doc.forEach((node, pos) => {
+      // Verifica se é um heading
+      if (node.type.name === 'heading') {
+        const level = node.attrs.level as number;
+        const text = node.textContent?.trim() || '';
+        
+        if (text) {
+          // Gera um ID único baseado no texto (slug)
+          const id = `heading-${pos}-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+          headings.push({
+            id,
+            level,
+            text,
+            pos,
+          });
+        }
+      }
+    });
+    
+    // Se não encontrou com forEach, tenta com descendants
+    if (headings.length === 0) {
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'heading') {
+          const level = node.attrs.level as number;
+          const text = node.textContent?.trim() || '';
+          
+          if (text) {
+            const id = `heading-${pos}-${text.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            headings.push({
+              id,
+              level,
+              text,
+              pos,
+            });
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Erro ao extrair headings:', error);
+  }
+  
+  return headings;
+};
+
+// Componente de Índice
+const TableOfContents: React.FC<{ editor: TiptapEditor }> = ({ editor }) => {
+  const [headings, setHeadings] = useState<TableOfContentsItem[]>([]);
+  
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    
+    const updateHeadings = () => {
+      const extracted = extractHeadings(editor);
+      setHeadings(extracted);
+    };
+    
+    // Atualiza quando o conteúdo muda
+    editor.on('update', updateHeadings);
+    editor.on('create', updateHeadings);
+    
+    // Atualiza inicialmente com um delay para garantir que o editor está pronto
+    const timeoutId = setTimeout(() => {
+      updateHeadings();
+    }, 500);
+    
+    return () => {
+      clearTimeout(timeoutId);
+      editor.off('update', updateHeadings);
+      editor.off('create', updateHeadings);
+    };
+  }, [editor]);
+  
+  const scrollToHeading = (pos: number) => {
+    if (!editor) return;
+    
+    // Move o cursor para a posição do heading e foca
+    editor.commands.setTextSelection(pos);
+    editor.commands.focus();
+    
+    // Scroll suave para o elemento após um pequeno delay
+    setTimeout(() => {
+      const { view } = editor;
+      const domAtPos = view.domAtPos(pos);
+      
+      // Encontra o elemento heading no DOM
+      let headingElement: HTMLElement | null = null;
+      
+      if (domAtPos.node) {
+        // Se o nó é um elemento heading
+        if (domAtPos.node.nodeType === Node.ELEMENT_NODE) {
+          const element = domAtPos.node as HTMLElement;
+          if (element.tagName && /^H[1-6]$/.test(element.tagName)) {
+            headingElement = element;
+          } else {
+            // Procura pelo heading pai ou próximo
+            let current: HTMLElement | null = element;
+            while (current && !headingElement) {
+              if (current.tagName && /^H[1-6]$/.test(current.tagName)) {
+                headingElement = current;
+                break;
+              }
+              current = current.parentElement;
+            }
+          }
+        }
+      }
+      
+      // Se não encontrou, procura por todos os headings e compara o texto
+      if (!headingElement) {
+        const editorDom = view.dom;
+        const allHeadings = editorDom.querySelectorAll('h1, h2, h3, h4, h5, h6');
+        const { state } = editor;
+        const nodeAtPos = state.doc.nodeAt(pos);
+        
+        if (nodeAtPos && nodeAtPos.type.name === 'heading') {
+          const targetText = nodeAtPos.textContent.trim();
+          
+          allHeadings.forEach((heading) => {
+            if (heading.textContent?.trim() === targetText) {
+              headingElement = heading as HTMLElement;
+            }
+          });
+        }
+      }
+      
+      // Faz scroll e destaque
+      if (headingElement) {
+        headingElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Destaque temporário
+        const originalBg = headingElement.style.backgroundColor;
+        headingElement.style.transition = 'background-color 0.3s';
+        headingElement.style.backgroundColor = '#fff3cd';
+        
+        setTimeout(() => {
+          headingElement!.style.backgroundColor = originalBg || '';
+        }, 1000);
+      }
+    }, 150);
+  };
+  
+  if (headings.length === 0) {
+    return (
+      <div className="sidebar-content">
+        <p style={{ padding: '1rem', color: '#666', fontSize: '0.9rem' }}>
+          Nenhum cabeçalho encontrado no documento. 
+          <br />
+          <small style={{ fontSize: '0.8rem', color: '#999' }}>
+            Use H1, H2, H3, etc. no seletor de estilos da toolbar para criar cabeçalhos.
+          </small>
+        </p>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="sidebar-content">
+      <div className="table-of-contents">
+        {headings.map((heading, index) => (
+          <div
+            key={`${heading.id}-${index}`}
+            className={`toc-item toc-level-${heading.level}`}
+            style={{
+              paddingLeft: `${(heading.level - 1) * 12}px`,
+              paddingTop: '4px',
+              paddingBottom: '4px',
+              cursor: 'pointer',
+              fontSize: heading.level === 1 ? '0.95rem' : heading.level === 2 ? '0.9rem' : '0.85rem',
+              fontWeight: heading.level <= 2 ? '600' : '400',
+              color: '#333',
+            }}
+            onClick={() => scrollToHeading(heading.pos)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f5f5f5';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            {heading.text}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 export const EditorSidebar: React.FC<EditorSidebarProps> = ({ 
   editor, 
   handleBlockStyle, 
   applyCustomInlineStyle
 }) => {
-  const [activeTab, setActiveTab] = useState<'estilos' | 'notas' | 'ancoras' | 'alteracoes'>('estilos');
+  const [activeTab, setActiveTab] = useState<'estilos' | 'notas' | 'ancoras' | 'alteracoes' | 'indice'>('estilos');
   
   const isBlockStyleActive = useCallback((className: string) => {
     if (!editor || !editor.state) return false;
@@ -435,22 +648,10 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
           Estilos
         </button>
         <button 
-          className={`sidebar-tab ${activeTab === 'notas' ? 'active' : ''}`}
-          onClick={() => setActiveTab('notas')}
+          className={`sidebar-tab ${activeTab === 'indice' ? 'active' : ''}`}
+          onClick={() => setActiveTab('indice')}
         >
-          Notas
-        </button>
-        <button 
-          className={`sidebar-tab ${activeTab === 'ancoras' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ancoras')}
-        >
-          Âncoras
-        </button>
-        <button 
-          className={`sidebar-tab ${activeTab === 'alteracoes' ? 'active' : ''}`}
-          onClick={() => setActiveTab('alteracoes')}
-        >
-          Alterações
+          Índice
         </button>
       </div>
 
@@ -520,6 +721,10 @@ export const EditorSidebar: React.FC<EditorSidebarProps> = ({
         <div className="sidebar-content">
           <p>Funcionalidade de Alterações em desenvolvimento...</p>
         </div>
+      )}
+
+      {activeTab === 'indice' && (
+        <TableOfContents editor={editor} />
       )}
     </div>
   );
